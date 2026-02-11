@@ -1,0 +1,26 @@
+[package]
+name = "vape"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+panic-halt = "1.0"
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = { version = "0.7", features = ["device"] }
+nrf52840-hal = { version = "0.19", features = ["rt"] }
+embedded-hal = "1.0"
+embedded-layout = "0.4"
+embedded-graphics = "0.8"
+heapless = "0.9"
+ssd1306 = "0.10"
+
+#display-interface-spi # if SSD1306 on SPI
+#panic-rtt-target = { version = "0.1", features = ["cortex-m"] }
+#rtt-target
+
+[profile.release]
+debug = true
+
+#cargo build --release
+#cargo objcopy --release -- -O binary firmware.bin
+#uf2conv firmware.bin --family 0xADA52840 --base 0x27000 --output firmware.uf2

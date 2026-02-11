@@ -1,0 +1,7 @@
+/target
+/.idea/.gitignore
+/.idea/modules.xml
+/.idea/nrf-vape.iml
+/.idea/vcs.xml
+/Cargo.lock
+/firmware.*

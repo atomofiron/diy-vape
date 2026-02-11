@@ -1,0 +1,13 @@
+[build]
+target = "thumbv7em-none-eabihf"
+
+[alias]
+vape-build = "build --release"
+#uf2-build = "build_uf2.rs"
+
+[target.thumbv7em-none-eabihf]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tlink-patch.x",
+  "-C", "link-arg=--nmagic",
+]

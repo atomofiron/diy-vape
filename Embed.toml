@@ -1,0 +1,9 @@
+[default.general]
+chip = "nRF52840_xxAA"
+
+[default.flashing]
+enabled = true
+
+[default.reset]
+enabled = true
+halt_afterwards = false
