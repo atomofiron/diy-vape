@@ -6,3 +6,4 @@ pub mod r#macro;
 pub mod core;
 pub mod data;
 pub mod ext;
+pub mod games;

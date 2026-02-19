@@ -8,6 +8,7 @@ use nrf52840_hal::gpio::p1::Parts as Parts1;
 use nrf52840_hal::gpio::{DriveConfig, Level};
 use nrf52840_hal::pac::Peripherals;
 use nrf52840_hal::pwm::{Channel, Prescaler, Pwm};
+use nrf52840_hal::rng::Rng;
 use nrf52840_hal::twim::Pins as TwimPins;
 use nrf52840_hal::twim::Twim;
 #[allow(unused_imports)]
@@ -20,6 +21,7 @@ use vape::core::timer::Timer;
 use vape::data::mode::Mode;
 use vape::data::state::State;
 use vape::ext::pin_ext::LedExt;
+use vape::games::life::life::alive;
 use vape::types::Display;
 use vape::values::BATTERY_PERIOD;
 
@@ -62,7 +64,7 @@ fn main() -> ! {
         .degrade();
 
     let pins = TwimPins { scl, sda };
-    let i2c = Twim::new(peripherals.TWIM0, pins, nrf52840_hal::twim::Frequency::K100);
+    let i2c = Twim::new(peripherals.TWIM0, pins, nrf52840_hal::twim::Frequency::K400);
 
     let interface = I2CDisplayInterface::new(i2c);
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
@@ -78,6 +80,8 @@ fn main() -> ! {
         peripherals.POWER,
     );
 
+    let mut rng = Rng::new(peripherals.RNG);
+
     on_unlock(&mut charge, &mut timer);
 
     let mut state = State::default();
@@ -89,6 +93,13 @@ fn main() -> ! {
             _ if now == touched && now && matches!(state.mode, Mode::Work(_)) => {
                 state.inc_progress();
                 state.render_header(&mut display);
+                match &state.mode {
+                    Mode::Work(255) => {
+                        green.off();
+                        alive(&mut display, &mut timer, &mut rng)
+                    },
+                    _ => (),
+                }
             },
             _ if now == touched => (),
             true => {
