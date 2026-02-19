@@ -18,6 +18,7 @@ type StyledLine = Styled<Line, FigureStyle>;
 pub const WHITE_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::On);
 pub const BLACK_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::Off);
 pub const WHITE_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::On);
+pub const BLACK_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::Off);
 pub const WHITE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
 pub const BLACK_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::Off, 1);
 const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::Off, 0);

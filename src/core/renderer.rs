@@ -1,5 +1,5 @@
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_TEXT, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::strings::{HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
@@ -11,9 +11,8 @@ use crate::types::Display;
 use crate::values::{PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
-use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Circle, CornerRadii, Line, PrimitiveStyle, Rectangle, RoundedRectangle};
+use embedded_graphics::primitives::{Circle, CornerRadii, Line, Rectangle, RoundedRectangle};
 use embedded_graphics::text::Text;
 use embedded_layout::layout::linear::{FixedMargin, LinearLayout};
 use embedded_layout::prelude::{horizontal, vertical, Align, Chain};
@@ -50,10 +49,9 @@ impl Renderer for State {
     }
 
     fn draw_header(&mut self, display: &mut Display) {
-        display.clear_header();
-
         match self.mode {
             Mode::Work(progress) => {
+                display.clear_header(false);
                 let point = Point::new(PROGRESS_OFFSET, 0);
                 let size = Size::new(PROGRESS_WIDTH, AREA);
                 let corners = CornerRadii::new(Size::new(RADIUS, RADIUS));
@@ -65,7 +63,7 @@ impl Renderer for State {
                     .ignore();
                 let cut_point = kopy!(point, x = point.x + progress as i32);
                 Rectangle::new(cut_point, Size::new(AREA, AREA))
-                    .into_styled(PrimitiveStyle::with_fill(BinaryColor::Off))
+                    .into_styled(BLACK_FILL)
                     .draw(display)
                     .ignore();
                 RoundedRectangle::new(Rectangle::new(point, size), corners)
@@ -75,20 +73,23 @@ impl Renderer for State {
                 self.draw_buttons(display);
             }
             Mode::Power => {
+                display.clear_header(true);
                 let title =  format!(10, "{POWER} {}%", self.config.power.value());
-                Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
+                Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Limit => {
-                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
+                display.clear_header(true);
+                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Resistance => {
-                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
+                display.clear_header(true);
+                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
@@ -151,11 +152,12 @@ impl Renderer for State {
         let watt = format!(4, "{}W", self.watt);
         let watt = Text::new(watt.as_str(), Point::new(0, 14), WHITE_TEXT);
         let chain = Chain::new(Chain::new(resistance).append(resistance.background(is_resistance)))
+            .append(space(2))
             .append(ICON_OHM)
-            .append(space(8))
-            .append(watt);
+            .append(space(12))
+            .append(watt)
+            .append(space(3)); // because of resistance has a background
         LinearLayout::horizontal(chain)
-            .with_spacing(FixedMargin(2))
             .with_alignment(vertical::Center)
             .arrange()
             .align_to(&display_area, horizontal::Center, vertical::Center)
