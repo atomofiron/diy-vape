@@ -8,6 +8,7 @@ const BUF_SIZE: usize = WIDTH * HEIGHT / 8;
 pub struct Universe {
     pub curr_gen: [u8; BUF_SIZE],
     pub next_gen: [u8; BUF_SIZE],
+    splash: bool,
 }
 
 impl Universe {
@@ -16,6 +17,7 @@ impl Universe {
         Universe {
             curr_gen: [0; BUF_SIZE],
             next_gen: [0; BUF_SIZE],
+            splash: false,
         }
     }
 
@@ -38,13 +40,18 @@ impl Universe {
                 let is_alive = self.is_alive(x, y);
                 let count = self.count_neighbors(x, y);
                 match is_alive {
-                    false if count == 3 => self.set_cell(x, y, true), // birth
-                    true if count < 2 || count > 3 => self.set_cell(x, y, false), // death
+                    false if self.splash && count == 1 || count == 3 => self.set_cell(x, y, true), // birth
+                    true if !self.splash && count < 2 || count > 3 => self.set_cell(x, y, false), // death
                     _ => self.set_cell(x, y, is_alive), // keep
                 }
             }
         }
         self.curr_gen = self.next_gen;
+        self.splash = false;
+    }
+
+    pub fn splash(&mut self) {
+        self.splash = true;
     }
 
     #[inline]
