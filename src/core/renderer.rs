@@ -1,5 +1,6 @@
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{BATTERY_TEXT, BLACK_TEXT, BLACK_STROKE, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_TEXT, WHITE_FILL, WHITE_STROKE, space};
+use crate::core::graphics::{space, BATTERY_TEXT, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::strings::{HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
 use crate::data::power::Power;
@@ -7,7 +8,7 @@ use crate::data::state::State;
 use crate::ext::result_ext::ResultExt;
 use crate::ext::text_ext::TextExt;
 use crate::types::Display;
-use crate::values::PROGRESS_WIDTH;
+use crate::values::{PROGRESS_OFFSET, PROGRESS_WIDTH, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -53,17 +54,17 @@ impl Renderer for State {
 
         match self.mode {
             Mode::Work(progress) => {
-                let point = Point::new(22, 0);
-                let size = Size::new(PROGRESS_WIDTH, Display::area_height());
-                let corners = CornerRadii::new(Size::new(8, 8));
+                let point = Point::new(PROGRESS_OFFSET, 0);
+                let size = Size::new(PROGRESS_WIDTH, AREA);
+                let corners = CornerRadii::new(Size::new(RADIUS, RADIUS));
                 let progress = progress as u32 / 3;
-                let fill_size = kopy!(size, width = min(progress + 16, PROGRESS_WIDTH));
+                let fill_size = kopy!(size, width = min(progress + AREA, PROGRESS_WIDTH));
                 RoundedRectangle::new(Rectangle::new(point, fill_size), corners)
                     .into_styled(WHITE_FILL)
                     .draw(display)
                     .ignore();
                 let cut_point = kopy!(point, x = point.x + progress as i32);
-                Rectangle::new(cut_point, Size::new(16, 16))
+                Rectangle::new(cut_point, Size::new(AREA, AREA))
                     .into_styled(PrimitiveStyle::with_fill(BinaryColor::Off))
                     .draw(display)
                     .ignore();
@@ -71,23 +72,23 @@ impl Renderer for State {
                     .into_styled(WHITE_STROKE)
                     .draw(display)
                     .ignore();
-                self.draw_buttons(display)
+                self.draw_buttons(display);
             }
             Mode::Power => {
                 let title =  format!(10, "{POWER} {}%", self.config.power.value());
-                Text::new(title.as_str(), Point::new(0, 12), WHITE_TEXT)
+                Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Limit => {
-                Text::new(LIMIT, Point::new(0, 12), WHITE_TEXT)
+                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Resistance => {
-                Text::new(RESISTANCE, Point::new(0, 12), WHITE_TEXT)
+                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), WHITE_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
@@ -126,11 +127,11 @@ impl Renderer for State {
             .with_alignment(vertical::Center)
             .arrange()
             .align_to(&display_area, horizontal::Center, vertical::Center)
-            .translate(Point::new(0, -8))
+            .translate(Point::new(0, -8 + OFFSET))
             .draw(display)
             .ignore();
         if is_power || is_limit {
-            self.draw_buttons(display)
+            self.draw_buttons(display);
         }
     }
 
@@ -158,11 +159,11 @@ impl Renderer for State {
             .with_alignment(vertical::Center)
             .arrange()
             .align_to(&display_area, horizontal::Center, vertical::Center)
-            .translate(Point::new(0, 8))
+            .translate(Point::new(0, 8 + OFFSET))
             .draw(display)
             .ignore();
         if is_resistance {
-            self.draw_buttons(display)
+            self.draw_buttons(display);
         }
     }
 
@@ -224,14 +225,14 @@ impl Renderer for State {
         let y = match self.mode {
             Mode::Work(_) => 7,
             Mode::Power |
-            Mode::Limit => 23,
-            Mode::Resistance => 39,
+            Mode::Limit => 23 + OFFSET,
+            Mode::Resistance => 39 + OFFSET,
         };
-        Circle::with_center(Point::new(8, y), 16)
+        Circle::with_center(Point::new(RADIUS as i32, y), AREA)
             .into_styled(if self.buttons.0 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();
-        Circle::with_center(Point::new(119, y), 16)
+        Circle::with_center(Point::new((SCREEN_WIDTH - RADIUS) as i32, y), AREA)
             .into_styled(if self.buttons.1 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();

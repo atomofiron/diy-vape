@@ -5,6 +5,11 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::Primitive;
 use embedded_graphics::primitives::{Line, Polyline, PrimitiveStyle, Styled};
 
+pub const AREA: u32 = 16;
+pub const RADIUS: u32 = AREA / 2;
+pub const OFFSET: i32 = 2;
+pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
+
 type TextStyle<'l> = MonoTextStyle<'l, BinaryColor>;
 type FigureStyle = PrimitiveStyle<BinaryColor>;
 type StyledPolyline<'l> = Styled<Polyline<'l>, FigureStyle>;
