@@ -8,7 +8,7 @@ use crate::data::state::State;
 use crate::ext::result_ext::ResultExt;
 use crate::ext::text_ext::TextExt;
 use crate::types::Display;
-use crate::values::{PROGRESS_OFFSET, PROGRESS_WIDTH, SCREEN_WIDTH};
+use crate::values::{PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -57,7 +57,7 @@ impl Renderer for State {
                 let point = Point::new(PROGRESS_OFFSET, 0);
                 let size = Size::new(PROGRESS_WIDTH, AREA);
                 let corners = CornerRadii::new(Size::new(RADIUS, RADIUS));
-                let progress = progress as u32 / 3;
+                let progress = progress as u32 / PROGRESS_STEP;
                 let fill_size = kopy!(size, width = min(progress + AREA, PROGRESS_WIDTH));
                 RoundedRectangle::new(Rectangle::new(point, fill_size), corners)
                     .into_styled(WHITE_FILL)
@@ -228,11 +228,11 @@ impl Renderer for State {
             Mode::Limit => 23 + OFFSET,
             Mode::Resistance => 39 + OFFSET,
         };
-        Circle::with_center(Point::new(RADIUS as i32, y), AREA)
+        Circle::with_center(Point::new(RADIUS as i32 - 1, y), AREA)
             .into_styled(if self.buttons.0 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();
-        Circle::with_center(Point::new((SCREEN_WIDTH - RADIUS) as i32, y), AREA)
+        Circle::with_center(Point::new((SCREEN_WIDTH - RADIUS) as i32 - 1, y), AREA)
             .into_styled(if self.buttons.1 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();
