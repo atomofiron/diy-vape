@@ -9,21 +9,22 @@ pub fn alive(
     display: &mut Display,
     timer: &mut Timer,
     rng: &mut Rng,
+    with_splashes: bool,
 ) {
     let universe_ptr = &raw mut UNIVERSE;
     let universe = unsafe { &mut *universe_ptr };
 
-    let mut counter = 0;
+    let mut time = timer.now();
     universe.sow(rng);
     loop {
+        if with_splashes {
+            if timer.now() >= time + 2044 { // ~2 sec
+                time = timer.now();
+                universe.splash()
+            }
+        }
         display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8)).unwrap();
         display.draw(&universe.curr_gen).unwrap();
         universe.evolution();
-        timer.sleep_ms(30);
-        if counter == 30 {
-            counter = 0;
-            universe.splash()
-        }
-        counter += 1;
     }
 }

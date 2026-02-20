@@ -96,7 +96,8 @@ fn main() -> ! {
                 match &state.mode {
                     Mode::Work(255) => {
                         green.off();
-                        alive(&mut display, &mut timer, &mut rng)
+                        pwm.set_duty_off(Channel::C0, ZERO_DUTY);
+                        alive(&mut display, &mut timer, &mut rng, true)
                     },
                     _ => (),
                 }
