@@ -22,9 +22,10 @@ impl Universe {
     }
 
     pub fn sow(&mut self, rng: &mut Rng) {
+        let mut atom = rng.random_u64();
+        let iron = rng.random_u64();
+
         for i in (0..BUF_SIZE).step_by(32) {
-            let atom = rng.random_u64();
-            let iron = rng.random_u64();
 
             let spin = (atom & iron).to_ne_bytes();
             self.curr_gen[i..i+8].copy_from_slice(&spin);
@@ -37,6 +38,8 @@ impl Universe {
 
             let hours = (!atom & !iron).to_ne_bytes();
             self.curr_gen[i+24..i+32].copy_from_slice(&hours);
+
+            atom = atom.rotate_left(2);
         }
     }
 
