@@ -22,15 +22,21 @@ impl Universe {
     }
 
     pub fn sow(&mut self, rng: &mut Rng) {
-        for i in (0..BUF_SIZE).step_by(16) {
+        for i in (0..BUF_SIZE).step_by(32) {
             let atom = rng.random_u64();
             let iron = rng.random_u64();
 
             let spin = (atom & iron).to_ne_bytes();
             self.curr_gen[i..i+8].copy_from_slice(&spin);
 
-            let muon = (!atom & !iron).to_ne_bytes();
-            self.curr_gen[i+8..i+16].copy_from_slice(&muon);
+            let muons = (!atom & iron).to_ne_bytes();
+            self.curr_gen[i+8..i+16].copy_from_slice(&muons);
+
+            let ten = (atom & !iron).to_ne_bytes();
+            self.curr_gen[i+16..i+24].copy_from_slice(&ten);
+
+            let hours = (!atom & !iron).to_ne_bytes();
+            self.curr_gen[i+24..i+32].copy_from_slice(&hours);
         }
     }
 
