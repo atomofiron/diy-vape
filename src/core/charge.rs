@@ -14,7 +14,7 @@ pub struct Charge {
     pub vbat_pin: Pin0_31,
     pub saadc: Saadc,
     pub power: POWER,
-    pub last_check: u32,
+    pub last_check: u64,
 }
 
 impl Charge {

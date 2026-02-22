@@ -18,7 +18,7 @@ pub fn alive(
     universe.sow(rng);
     loop {
         if with_splashes {
-            if timer.now() >= time + 2044 { // ~2 sec
+            if timer.now() >= time + 2044 { // ≈2 sec
                 time = timer.now();
                 universe.splash()
             }

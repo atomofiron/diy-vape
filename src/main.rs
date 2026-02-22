@@ -82,8 +82,6 @@ fn main() -> ! {
 
     let mut rng = Rng::new(peripherals.RNG);
 
-    on_unlock(&mut charge, &mut timer);
-
     let mut state = State::default();
     state.render_all(&mut display);
     let mut touched = false;
@@ -142,12 +140,4 @@ fn update_charge(
     }
     state.battery_charging = connected;
     state.render_footer(display);
-}
-
-fn on_unlock(
-    charge: &mut Charge,
-    timer: &mut Timer,
-) {
-    timer.reset();
-    charge.last_check = 0;
 }

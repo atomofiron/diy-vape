@@ -10,4 +10,4 @@ pub const RESISTANCE_RANGE: Range<DeciOhms> = 1..255;
 pub const PROGRESS_STEP: u32 = 3;
 pub const PROGRESS_WIDTH: u32 = 255 / PROGRESS_STEP + 1;
 pub const PROGRESS_OFFSET: i32 = (SCREEN_WIDTH - PROGRESS_WIDTH) as i32 / 2;
-pub const BATTERY_PERIOD: u32 = 60000; // ms
+pub const BATTERY_PERIOD: u64 = 60000; // ms

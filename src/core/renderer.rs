@@ -179,7 +179,7 @@ impl Renderer for State {
 
         let display_area = display.bounding_box();
 
-        let mut tmp = self.total;
+        let mut tmp = self.stat.total;
         let ds = tmp % 10;
         tmp /= 10;
         let s = tmp % 60;

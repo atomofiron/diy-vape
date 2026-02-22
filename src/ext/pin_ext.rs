@@ -12,11 +12,12 @@ impl LedExt for POPP {
 
     fn on(&mut self) {
         self.set_low().ignore();
-        cortex_m::asm::delay(1_000_000);
+        cortex_m::asm::delay(4_000_000);
     }
 
     fn off(&mut self) {
         self.set_high().ignore();
+        cortex_m::asm::delay(4_000_000);
     }
 
     fn blink(&mut self) {
