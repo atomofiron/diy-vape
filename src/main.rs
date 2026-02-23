@@ -166,12 +166,16 @@ fn update_charge(
     let connected = charge.is_usb_connected();
     if connected && state.battery_level.is_some() {
         state.battery_level = None;
+        state.battery_voltage = None;
     } else if connected && state.battery_charging {
         return;
     } else if state.battery_level.is_none() || charge.last_check == 0 || (now - charge.last_check) > BATTERY_PERIOD {
         charge.last_check = now;
-        state.battery_level = charge.get_mv();
+        let mv_and_level = charge.get_mv_and_level();
+        state.battery_level = mv_and_level.map(|(_, level)| level);
+        state.battery_voltage = mv_and_level.map(|(voltage, _)| voltage);
     }
     state.battery_charging = connected;
+    state.render_resistance_and_watt(display);
     state.render_footer(display);
 }

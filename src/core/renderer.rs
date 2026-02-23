@@ -150,7 +150,7 @@ impl Renderer for State {
 
         let resistance = format!(6, "{}", self.config.resistance as f32 / 10.0);
         let resistance = Text::new(resistance.as_str(), Point::new(0, 14), if is_resistance { BLACK_TEXT } else { WHITE_TEXT });
-        let watt = match &self.watt {
+        let watt = match self.watts() {
             Some(watt) => format!(4, "{}W", watt),
             None => string::<4>("--W"),
         };

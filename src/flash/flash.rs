@@ -1,3 +1,4 @@
+use crate::types::Storage;
 use crate::values::STORAGE_RANGE;
 use core::slice::from_raw_parts_mut;
 use embedded_storage::nor_flash as sync_nf;
@@ -14,7 +15,6 @@ unsafe extern "C" {
 }
 
 type NrfNvmc = Nvmc<NVMC>;
-pub type Storage = MapStorage<u8, AsyncFlash, NoCache>;
 
 pub struct AsyncFlash(pub NrfNvmc);
 

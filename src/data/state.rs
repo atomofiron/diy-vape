@@ -1,6 +1,8 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
+use crate::types::{MilliVolts, Percents};
+use crate::util::round;
 use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE};
 
 pub struct State {
@@ -9,10 +11,10 @@ pub struct State {
     pub stats: Stats,
 
     pub buttons: (bool, bool),
-    pub watt: Option<u8>,
 
     pub battery_charging: bool,
-    pub battery_level: Option<u8>,
+    pub battery_voltage: Option<MilliVolts>,
+    pub battery_level: Option<Percents>,
 
     pub is_progress_dirty: bool,
     pub is_buttons_dirty: bool,
@@ -32,9 +34,9 @@ impl State {
             stats,
 
             buttons: (false, false),
-            watt: None,
 
             battery_charging: false,
+            battery_voltage: None,
             battery_level: None,
 
             is_progress_dirty: true,
@@ -94,6 +96,16 @@ impl State {
     pub fn dec_resistance(mut self) {
         if self.config.resistance > RESISTANCE_RANGE.start {
             self.config.resistance -= 1
+        }
+    }
+
+    pub fn watts(&self) -> Option<u8> {
+        let volts = self.battery_voltage? as f32 / 1000f32;
+        let ohms = self.config.resistance as f32 / 10f32;
+        return match round(volts * volts / ohms) {
+            w if w < 0 => None,
+            w if w > 255 => None,
+            w => Some(w as u8),
         }
     }
 }

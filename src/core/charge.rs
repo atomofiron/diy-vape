@@ -40,24 +40,24 @@ impl Charge {
             .bit_is_set()
     }
 
-    pub fn get_mv(&mut self) -> Option<u8> {
+    pub fn get_mv_and_level(&mut self) -> Option<(u16, u8)> {
         if self.is_usb_connected() {
             return None;
         }
         self.enable_measuring();
         delay(1_000_000);
-        let mut arr = [0i32; 8];
+        let mut arr = [0u32; 8];
         arr.iter_mut()
-            .for_each(|v| *v = self.read_mv() as i32);
+            .for_each(|v| *v = self.read_mv() as u32);
         self.disable_measuring();
-        let avg = arr.iter().sum::<i32>() / arr.len() as i32;
-        let mut percents = (avg - 3500) / 7;
+        let avg = arr.iter().sum::<u32>() / arr.len() as u32;
+        let mut percents = (avg as i32 - 3500) / 7;
         percents = match () {
             _ if percents < 0 => 0,
             _ if percents > 100 => 100,
             _ => percents,
         };
-        return Some(percents as u8);
+        return Some((avg as u16, percents as u8));
     }
 
     pub fn read_mv(&mut self) -> u16 {

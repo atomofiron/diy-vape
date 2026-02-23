@@ -1,6 +1,6 @@
-use crate::flash::flash::Storage;
 use crate::flash::flash_value::FlashValue;
 use crate::flash::savable::Savable;
+use crate::types::Storage;
 use nrf52840_hal::nvmc::NvmcError;
 use sequential_storage::Error;
 
