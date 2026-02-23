@@ -1,16 +1,15 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
-use crate::types::DeciSeconds;
+use crate::data::stats::Stats;
 use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE};
 
 pub struct State {
     pub mode: Mode,
     pub config: Config,
+    pub stats: Stats,
 
     pub buttons: (bool, bool),
-    pub total: DeciSeconds,
-    pub count: u32,
-    pub watt: u8,
+    pub watt: Option<u8>,
 
     pub battery_charging: bool,
     pub battery_level: Option<u8>,
@@ -24,16 +23,16 @@ pub struct State {
     pub is_battery_dirty: bool,
 }
 
-impl Default for State {
-    fn default() -> Self {
+impl State {
+
+    pub fn with(config: Config, stats: Stats) -> Self {
         Self {
             mode: Mode::Work(0),
-            config: Config::default(),
+            config,
+            stats,
 
             buttons: (false, false),
-            total: 7545,
-            count: 1337,
-            watt: 30,
+            watt: None,
 
             battery_charging: false,
             battery_level: None,
@@ -47,9 +46,6 @@ impl Default for State {
             is_battery_dirty: true,
         }
     }
-}
-
-impl State {
 
     pub fn next_mode(&mut self) {
         self.mode = self.mode.next()
@@ -99,5 +95,12 @@ impl State {
         if self.config.resistance > RESISTANCE_RANGE.start {
             self.config.resistance -= 1
         }
+    }
+}
+
+impl Default for State {
+
+    fn default() -> Self {
+        State::with(Config::default(), Stats::default())
     }
 }

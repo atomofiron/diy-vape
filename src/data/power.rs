@@ -1,4 +1,7 @@
+use postcard::experimental::max_size::MaxSize;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
 pub enum Power {
     Rare,
     Medium,
@@ -36,3 +39,8 @@ impl Power {
     }
 }
 
+impl Default for Power {
+    fn default() -> Self {
+        Self::Medium
+    }
+}

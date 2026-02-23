@@ -12,27 +12,43 @@ use nrf52840_hal::rng::Rng;
 use nrf52840_hal::twim::Pins as TwimPins;
 use nrf52840_hal::twim::Twim;
 #[allow(unused_imports)]
-use panic_halt;
+use panic_reset;
 use ssd1306::prelude::*;
 use ssd1306::{I2CDisplayInterface, Ssd1306};
 use vape::core::charge::Charge;
 use vape::core::renderer::Renderer;
 use vape::core::timer::Timer;
+use vape::data::config::Config;
 use vape::data::mode::Mode;
 use vape::data::state::State;
+use vape::data::stats::Stats;
+use vape::ext::option_ext::OptionExt;
 use vape::ext::pin_ext::LedExt;
+use vape::flash::flash::AsyncFlash;
+use vape::flash::flash_storage::FlashStorage;
+use vape::flash::savable::Savable;
 use vape::games::life::life::alive;
 use vape::types::Display;
+use vape::util::blocking::blocking;
+use vape::util::logging::SoftUnwrap;
 use vape::values::BATTERY_PERIOD;
 
 const ZERO_DUTY: u16 = 0;
-const TEST_DUTY: u16 = 0xf;
+const TEST_DUTY: u16 = 0x1;
 const LOW_DUTY: u16 = 0x1fff;
 const HALF_DUTY: u16 = 0x3fff;
 const MAX_DUTY: u16 = 0x7fff;
 
 #[entry]
 fn main() -> ! {
+    // fake async
+    let _ = blocking(async {
+        async_main().await
+    });
+    loop {}
+}
+
+async fn async_main() -> ! {
     let peripherals = Peripherals::take().unwrap();
 
     let port0 = Parts0::new(peripherals.P0);
@@ -44,6 +60,8 @@ fn main() -> ! {
     let mut green = port0.p0_30.into_push_pull_output(Level::High).degrade();
     let mut blue = port0.p0_06.into_push_pull_output(Level::High).degrade();
 
+    blue.blink();
+
     let pin_02 = port0.p0_02.into_push_pull_output_drive(Level::Low, DriveConfig::HighDrive0HighDrive1).degrade();
     let pwm = Pwm::new(peripherals.PWM0);
     pwm.set_output_pin(Channel::C0, pin_02);
@@ -54,8 +72,6 @@ fn main() -> ! {
     //let mut gate = port0.p0_02.into_push_pull_output_drive(Level::Low, DriveConfig::HighDrive0HighDrive1);
     //let mut gate = port0.p0_02.into_push_pull_output(Level::Low);
 
-    blue.blink();
-
     let mut timer = Timer::init(peripherals.RTC1, peripherals.CLOCK);
 
     let scl = port0.p0_05.into_floating_input()
@@ -65,7 +81,6 @@ fn main() -> ! {
 
     let pins = TwimPins { scl, sda };
     let i2c = Twim::new(peripherals.TWIM0, pins, nrf52840_hal::twim::Frequency::K400);
-
     let interface = I2CDisplayInterface::new(i2c);
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
@@ -73,6 +88,22 @@ fn main() -> ! {
     if !display.init().is_ok() {
         red.on();
     }
+
+    let flash = AsyncFlash::from(peripherals.NVMC);
+    let mut storage = flash.storage();
+
+    let mut buf = [0u8; Config::FLASH_BUFFER_SIZE];
+    let config =storage.read::<Config>(&mut buf)
+        .await.soft_unwrap()
+        .flat()
+        .unwrap_or_default();
+
+    let mut buf = [0u8; Stats::FLASH_BUFFER_SIZE];
+    let stats = storage.read::<Stats>(&mut buf)
+        .await.soft_unwrap()
+        .flat()
+        .unwrap_or_default();
+
     let mut charge = Charge::init(
         port0.p0_14.into_push_pull_output(Level::High),
         port0.p0_31.into_floating_input(),
@@ -82,8 +113,11 @@ fn main() -> ! {
 
     let mut rng = Rng::new(peripherals.RNG);
 
-    let mut state = State::default();
+    let mut state = State::with(config, stats);
     state.render_all(&mut display);
+
+    green.blink();
+
     let mut touched = false;
     loop {
         let now = touch.is_high().unwrap_or(false);

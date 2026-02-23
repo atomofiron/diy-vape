@@ -7,3 +7,5 @@ pub mod core;
 pub mod data;
 pub mod ext;
 pub mod games;
+pub mod flash;
+pub mod util;

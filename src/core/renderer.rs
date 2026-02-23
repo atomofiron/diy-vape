@@ -6,6 +6,7 @@ use crate::data::mode::Mode;
 use crate::data::power::Power;
 use crate::data::state::State;
 use crate::ext::result_ext::ResultExt;
+use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::types::Display;
 use crate::values::{PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
@@ -149,7 +150,10 @@ impl Renderer for State {
 
         let resistance = format!(6, "{}", self.config.resistance as f32 / 10.0);
         let resistance = Text::new(resistance.as_str(), Point::new(0, 14), if is_resistance { BLACK_TEXT } else { WHITE_TEXT });
-        let watt = format!(4, "{}W", self.watt);
+        let watt = match &self.watt {
+            Some(watt) => format!(4, "{}W", watt),
+            None => string::<4>("--W"),
+        };
         let watt = Text::new(watt.as_str(), Point::new(0, 14), WHITE_TEXT);
         let chain = Chain::new(Chain::new(resistance).append(resistance.background(is_resistance)))
             .append(space(2))
@@ -179,7 +183,7 @@ impl Renderer for State {
 
         let display_area = display.bounding_box();
 
-        let mut tmp = self.stat.total;
+        let mut tmp = self.stats.total;
         let ds = tmp % 10;
         tmp /= 10;
         let s = tmp % 60;
