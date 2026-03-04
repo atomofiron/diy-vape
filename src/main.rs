@@ -164,18 +164,29 @@ fn update_battery(
 ) {
     let now = timer.now();
     let connected = charge.is_usb_connected();
-    if connected && state.battery_level.is_some() {
-        state.battery_level = None;
-        state.battery_voltage = None;
-    } else if connected && state.battery_charging {
-        return;
-    } else if state.battery_level.is_none() || charge.last_check == 0 || (now - charge.last_check) > BATTERY_PERIOD {
+    let is_charging = is_charging() || connected; // todo remove '|| connected'
+    let need_update = state.battery_level.is_none() || charge.last_check == 0 || (now - charge.last_check) > BATTERY_PERIOD;
+    match () {
+        _ if connected != state.usb_connected => (),
+        _ if is_charging != state.battery_charging => (),
+        _ if !connected && need_update => (),
+        _ => return,
+    }
+    state.usb_connected = connected;
+    state.battery_charging = is_charging;
+    if !connected && need_update {
         charge.last_check = now;
         let mv_and_level = charge.get_mv_and_level();
         state.battery_level = mv_and_level.map(|(_, level)| level);
         state.battery_voltage = mv_and_level.map(|(voltage, _)| voltage);
+    } else if connected { // don't measure battery level if usb is connected to the nrf52840
+        state.battery_level = None;
+        state.battery_voltage = None;
     }
-    state.battery_charging = connected;
     state.render_resistance_and_watt(display);
     state.render_footer(display);
+}
+
+fn is_charging() -> bool {
+    false // todo check charging leds
 }

@@ -12,7 +12,8 @@ pub struct State {
 
     pub buttons: (bool, bool),
 
-    pub battery_charging: bool,
+    pub usb_connected: bool, // nrf52840
+    pub battery_charging: bool, // 4056H
     pub battery_voltage: Option<MilliVolts>,
     pub battery_level: Option<Percents>,
 
@@ -35,6 +36,7 @@ impl State {
 
             buttons: (false, false),
 
+            usb_connected: false,
             battery_charging: false,
             battery_voltage: None,
             battery_level: None,
