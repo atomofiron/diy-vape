@@ -85,7 +85,7 @@ async fn async_main() -> ! {
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    if !display.init().is_ok() {
+    if display.init().is_err() {
         red.on();
     }
 
@@ -129,7 +129,7 @@ async fn async_main() -> ! {
                     Mode::Work(255) => {
                         green.off();
                         pwm.set_duty_off(Channel::C0, ZERO_DUTY);
-                        alive(&mut display, &mut timer, &mut rng, true)
+                        alive(&mut display, &mut timer, &mut rng, false, &mut green)
                     },
                     _ => (),
                 }
@@ -152,11 +152,11 @@ async fn async_main() -> ! {
         }
         touched = now;
         timer.sleep_ms(10);
-        update_charge(&mut charge, &mut timer, &mut state, &mut display);
+        update_battery(&mut charge, &mut timer, &mut state, &mut display);
     }
 }
 
-fn update_charge(
+fn update_battery(
     charge: &mut Charge,
     timer: &mut Timer,
     state: &mut State,

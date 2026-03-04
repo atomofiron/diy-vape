@@ -2,6 +2,7 @@
 name = "vape"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-2"
 
 [dependencies]
 panic-halt = "1.0"
@@ -16,6 +17,7 @@ embedded-storage = "0.3"
 embedded-storage-async = "0.4"
 heapless = "0.9"
 ssd1306 = "0.10"
+bytemuck = "1.25"
 sequential-storage = "7.1"
 postcard = { version = "1.0", default-features = false, features = ["experimental-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -27,12 +29,17 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 [profile.release]
 debug = true
 
-#cargo build --release
-#cargo objcopy --release -- -O binary firmware.bin
-#uf2conv firmware.bin --family 0xADA52840 --base 0x27000 --output firmware.uf2
-
 #probe-rs erase --chip nRF52840_xxAA
 #probe-rs download --binary-format hex --chip nRF52840_xxAA bootloader.hex
 
 #arm-none-eabi-size target/thumbv7em-none-eabihf/release/vape
 #arm-none-eabi-objdump -h target/thumbv7em-none-eabihf/release/vape | grep flash_storage
+
+#cargo build --release
+#cargo objcopy --release -- -O binary firmware.bin
+#uf2conv firmware.bin --family 0xADA52840 --base 0x27000 --output firmware.uf2
+
+#cp firmware.uf2 /Volumes/XIAO-BOOT
+# it's ok:
+#cp: /Volumes/XIAO-BOOT/firmware.uf2: fcopyfile failed: Input/output error
+#cp: /Volumes/XIAO-BOOT/firmware.uf2: fchmod failed: No such file or directory
