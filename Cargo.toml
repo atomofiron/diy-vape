@@ -28,18 +28,3 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [profile.release]
 debug = true
-
-#probe-rs erase --chip nRF52840_xxAA
-#probe-rs download --binary-format hex --chip nRF52840_xxAA bootloader.hex
-
-#arm-none-eabi-size target/thumbv7em-none-eabihf/release/vape
-#arm-none-eabi-objdump -h target/thumbv7em-none-eabihf/release/vape | grep flash_storage
-
-#cargo build --release
-#cargo objcopy --release -- -O binary firmware.bin
-#uf2conv firmware.bin --family 0xADA52840 --base 0x27000 --output firmware.uf2
-
-#cp firmware.uf2 /Volumes/XIAO-BOOT
-# it's ok:
-#cp: /Volumes/XIAO-BOOT/firmware.uf2: fcopyfile failed: Input/output error
-#cp: /Volumes/XIAO-BOOT/firmware.uf2: fchmod failed: No such file or directory
