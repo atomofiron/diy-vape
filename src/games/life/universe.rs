@@ -10,6 +10,7 @@ const SEEDS_25_COUNT: usize = 8;
 pub struct Universe {
     generation: [u64; BUF_SIZE],
     splash: bool,
+    pub last_splash: u64,
 }
 
 impl Universe {
@@ -18,6 +19,7 @@ impl Universe {
         Universe {
             generation: [0; BUF_SIZE],
             splash: false,
+            last_splash: 0,
         }
     }
 

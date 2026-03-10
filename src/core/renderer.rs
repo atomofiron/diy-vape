@@ -36,6 +36,9 @@ pub trait Renderer {
 
     fn draw_buttons(&mut self, display: &mut Display);
     fn render_buttons(&mut self, display: &mut Display);
+
+    fn draw_dirty(&mut self, display: &mut Display);
+    fn render_dirty(&mut self, display: &mut Display);
 }
 
 impl Renderer for State {
@@ -148,7 +151,7 @@ impl Renderer for State {
         let display_area = display.bounding_box();
         let is_resistance = matches!(self.mode, Mode::Resistance);
 
-        let resistance = format!(6, "{}", self.config.resistance as f32 / 10.0);
+        let resistance = format!(6, "{:.1}", self.config.resistance as f32 / 10.0);
         let resistance = Text::new(resistance.as_str(), Point::new(0, 14), if is_resistance { BLACK_TEXT } else { WHITE_TEXT });
         let watt = match self.watts() {
             Some(watt) => format!(4, "{}W", watt),
@@ -234,11 +237,25 @@ impl Renderer for State {
             Mode::Limit => 23 + OFFSET,
             Mode::Resistance => 39 + OFFSET,
         };
-        Circle::with_center(Point::new(RADIUS as i32 - 1, y), AREA)
+        let left_center = Point::new(RADIUS as i32 - 1, y);
+        let right_center = Point::new((SCREEN_WIDTH - RADIUS) as i32 - 1, y);
+        if !self.buttons.0 {
+            Circle::with_center(left_center, AREA)
+                .into_styled(BLACK_FILL)
+                .draw(display)
+                .ignore();
+        }
+        if !self.buttons.1 {
+            Circle::with_center(right_center, AREA)
+                .into_styled(BLACK_FILL)
+                .draw(display)
+                .ignore();
+        }
+        Circle::with_center(left_center, AREA)
             .into_styled(if self.buttons.0 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();
-        Circle::with_center(Point::new((SCREEN_WIDTH - RADIUS) as i32 - 1, y), AREA)
+        Circle::with_center(right_center, AREA)
             .into_styled(if self.buttons.1 { WHITE_FILL } else { WHITE_STROKE })
             .draw(display)
             .ignore();
@@ -247,5 +264,38 @@ impl Renderer for State {
     fn render_buttons(&mut self, display: &mut Display) {
         self.draw_buttons(display);
         display.flush().ignore();
+    }
+
+    fn draw_dirty(&mut self, display: &mut Display) {
+        if self.is_header_dirty || self.is_progress_dirty {
+            self.draw_header(display);
+            self.is_header_dirty = false;
+            self.is_progress_dirty = false;
+        }
+        if self.is_power_or_limit_dirty {
+            self.draw_power_and_limit(display);
+            self.is_power_or_limit_dirty = false;
+        }
+        if self.is_resistance_or_watt_dirty {
+            self.draw_resistance_and_watt(display);
+            self.is_resistance_or_watt_dirty = false;
+        }
+        if self.is_footer_dirty || self.is_stat_dirty || self.is_battery_dirty {
+            self.draw_footer(display);
+            self.is_footer_dirty = false;
+            self.is_stat_dirty = false;
+            self.is_battery_dirty = false;
+        }
+        if self.are_buttons_dirty {
+            self.draw_buttons(display);
+            self.are_buttons_dirty = false;
+        }
+    }
+
+    fn render_dirty(&mut self, display: &mut Display) {
+        if self.is_smth_dirty() {
+            self.draw_dirty(display);
+            display.flush().ignore();
+        }
     }
 }

@@ -1,4 +1,5 @@
 
+#[derive(Clone)]
 pub enum Mode {
     Work(u8),
     Power,

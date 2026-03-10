@@ -13,6 +13,7 @@ use nrf52840_hal::twim::Pins as TwimPins;
 use nrf52840_hal::twim::Twim;
 #[allow(unused_imports)]
 use panic_reset;
+use ssd1306::command::AddrMode;
 use ssd1306::prelude::*;
 use ssd1306::{I2CDisplayInterface, Ssd1306};
 use vape::core::charge::Charge;
@@ -24,20 +25,21 @@ use vape::data::state::State;
 use vape::data::stats::Stats;
 use vape::ext::option_ext::OptionExt;
 use vape::ext::pin_ext::LedExt;
+use vape::ext::result_ext::ResultExt;
 use vape::flash::flash::AsyncFlash;
 use vape::flash::flash_storage::FlashStorage;
 use vape::flash::savable::Savable;
-use vape::games::life::life::alive;
-use vape::types::Display;
+use vape::games::life::life::draw_life;
+use vape::types::{Display, Duty, POPP};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::BATTERY_PERIOD;
+use vape::values::{BATTERY_PERIOD, IDLE_PERIOD, PROGRESS_MAX, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
 
-const ZERO_DUTY: u16 = 0;
-const TEST_DUTY: u16 = 0x1;
-const LOW_DUTY: u16 = 0x1fff;
-const HALF_DUTY: u16 = 0x3fff;
-const MAX_DUTY: u16 = 0x7fff;
+const ZERO_DUTY: Duty = 0;
+const TEST_DUTY: Duty = 0x1;
+const LOW_DUTY: Duty = 0x1fff;
+const HALF_DUTY: Duty = 0x3fff;
+const MAX_DUTY: Duty = 0x7fff;
 
 #[entry]
 fn main() -> ! {
@@ -54,7 +56,9 @@ async fn async_main() -> ! {
     let port0 = Parts0::new(peripherals.P0);
     let port1 = Parts1::new(peripherals.P1);
 
-    let mut touch = port1.p1_12.into_pulldown_input();
+    let mut touch = port1.p1_12.into_floating_input();
+    let mut left_btn = port0.p0_03.into_pullup_input();
+    let mut right_btn = port0.p0_28.into_pullup_input();
 
     let mut red = port0.p0_26.into_push_pull_output(Level::High).degrade();
     let mut green = port0.p0_30.into_push_pull_output(Level::High).degrade();
@@ -68,9 +72,6 @@ async fn async_main() -> ! {
     pwm.set_prescaler(Prescaler::Div1);
     pwm.set_max_duty(MAX_DUTY);
     pwm.enable();
-
-    //let mut gate = port0.p0_02.into_push_pull_output_drive(Level::Low, DriveConfig::HighDrive0HighDrive1);
-    //let mut gate = port0.p0_02.into_push_pull_output(Level::Low);
 
     let mut timer = Timer::init(peripherals.RTC1, peripherals.CLOCK);
 
@@ -118,41 +119,126 @@ async fn async_main() -> ! {
 
     green.blink();
 
-    let mut touched = false;
+    let mut was_touched = false;
+    let mut last_action = timer.now();
+    let mut cool_down = false;
     loop {
-        let now = touch.is_high().unwrap_or(false);
-        match now {
-            _ if now == touched && now && matches!(state.mode, Mode::Work(_)) => {
-                state.inc_progress();
-                state.render_header(&mut display);
-                match &state.mode {
-                    Mode::Work(255) => {
-                        green.off();
-                        pwm.set_duty_off(Channel::C0, ZERO_DUTY);
-                        alive(&mut display, &mut timer, &mut rng, false, &mut green)
-                    },
-                    _ => (),
-                }
-            },
-            _ if now == touched => (),
-            true => {
-                //gate.set_high().ignore();
-                pwm.set_duty_off(Channel::C0, TEST_DUTY);
-                green.on();
-                state.next_mode();
-                state.render_all(&mut display);
-            },
-            false => {
-                //gate.set_low().ignore();
-                pwm.set_duty_off(Channel::C0, ZERO_DUTY);
-                green.off();
-                state.reset_progress();
-                state.render_header(&mut display);
-            },
+        let touched = touch.is_high().unwrap_or(false);
+        let touch_changed = touched != was_touched;
+        was_touched = touched;
+        if handle_touched(&mut state, &mut green, touch_changed, touched) {
+            set_display(&mut state, &mut display, true);
+            last_action = timer.now();
+            continue
         }
-        touched = now;
-        timer.sleep_ms(10);
-        update_battery(&mut charge, &mut timer, &mut state, &mut display);
+        let left_pressed = left_btn.is_low().unwrap_or(false);
+        let right_pressed = right_btn.is_low().unwrap_or(false);
+        let changed = state.set_pressed(left_pressed, right_pressed);
+        if changed {
+            set_display(&mut state, &mut display, true);
+        }
+        let new_duty = handle_pressed(&mut state, changed, left_pressed, right_pressed, &mut cool_down);
+        if let Some(new_duty) = new_duty {
+            pwm.set_duty_off(Channel::C0, new_duty);
+        }
+        let now = timer.now();
+        if state.is_smth_dirty() {
+            last_action = now;
+        } else if (now - last_action) < SCREENSAVER_TIMEOUT {
+        } else if !state.battery_charging {
+            let mut flag = true;
+            let mut start = true;
+            while touch.is_low().unwrap_or(false) {
+                match flag {
+                    true => green.on(),
+                    false => green.off(),
+                }
+                flag = !flag;
+                draw_life(&mut display, &mut timer, &mut rng, false, start);
+                start = false;
+            }
+            was_touched = true;
+            display.set_addr_mode(AddrMode::Horizontal)
+                .unwrap();
+            state.mark_all_dirty();
+            last_action = timer.now();
+        } else {
+            set_display(&mut state, &mut display, false);
+        }
+        update_battery(&mut charge, &mut timer, &mut state);
+        state.render_dirty(&mut display);
+        timer.sleep_ms(if state.is_display_on { IDLE_PERIOD } else { SLEEP_PERIOD } as u32);
+    }
+}
+
+fn handle_touched(
+    state: &mut State,
+    green: &mut POPP,
+    changed: bool,
+    touched: bool,
+) -> bool {
+    match touched {
+        _ if !changed => (),
+        _ if touched && !state.is_display_on => return true,
+        true => {
+            green.on();
+            state.next_mode();
+        },
+        false => green.off(),
+    }
+    return false
+}
+
+fn handle_pressed(
+    state: &mut State,
+    changed: bool,
+    left_pressed: bool,
+    right_pressed: bool,
+    cool_down: &mut bool,
+) -> Option<Duty> {
+    let mut new_duty = None;
+    if !state.is_display_on {
+        return new_duty
+    }
+    match state.mode.clone() {
+        Mode::Work(progress) => {
+            match () {
+                _ if !*cool_down && left_pressed && right_pressed => {
+                    new_duty = Some(TEST_DUTY);
+                    state.inc_progress();
+                    if progress == PROGRESS_MAX {
+                        *cool_down = true;
+                        new_duty = Some(ZERO_DUTY);
+                        state.reset_progress();
+                    }
+                },
+                _ if changed && !left_pressed && !right_pressed => {
+                    *cool_down = false;
+                    new_duty = Some(ZERO_DUTY);
+                    state.reset_progress();
+                },
+                _ if changed => new_duty = Some(ZERO_DUTY),
+                _ => (),
+            }
+        }
+        _ if !changed => (),
+        _ if left_pressed && right_pressed => (),
+        Mode::Power if left_pressed => state.dec_power(),
+        Mode::Power if right_pressed => state.inc_power(),
+        Mode::Limit if left_pressed => state.dec_limit(),
+        Mode::Limit if right_pressed => state.inc_limit(),
+        Mode::Resistance if left_pressed => state.dec_resistance(),
+        Mode::Resistance if right_pressed => state.inc_resistance(),
+        _ => (),
+    }
+    return new_duty
+}
+
+fn set_display(state: &mut State, display: &mut Display, on: bool) {
+    if on != state.is_display_on {
+    state.is_display_on = on;
+    display.set_display_on(on)
+        .ignore();
     }
 }
 
@@ -160,7 +246,6 @@ fn update_battery(
     charge: &mut Charge,
     timer: &mut Timer,
     state: &mut State,
-    display: &mut Display,
 ) {
     let now = timer.now();
     let connected = charge.is_usb_connected();
@@ -172,6 +257,8 @@ fn update_battery(
         _ if !connected && need_update => (),
         _ => return,
     }
+    state.is_battery_dirty = true;
+    state.is_resistance_or_watt_dirty = true;
     state.usb_connected = connected;
     state.battery_charging = is_charging;
     if !connected && need_update {
@@ -183,8 +270,6 @@ fn update_battery(
         state.battery_level = None;
         state.battery_voltage = None;
     }
-    state.render_resistance_and_watt(display);
-    state.render_footer(display);
 }
 
 fn is_charging() -> bool {

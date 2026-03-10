@@ -20,7 +20,7 @@ impl Power {
         }
     }
 
-    pub fn inc(self) -> Power {
+    pub fn inc(&self) -> Power {
         match self {
             Self::Rare => Power::Medium,
             Self::Medium => Power::Well,
@@ -29,7 +29,7 @@ impl Power {
         }
     }
 
-    pub fn dec(self) -> Power {
+    pub fn dec(&self) -> Power {
         match self {
             Self::Rare => Power::Rare,
             Self::Medium => Power::Rare,

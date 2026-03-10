@@ -14,5 +14,7 @@ pub type POPP = Pin<Output<PushPull>>;
 pub type DeciOhms = u8;
 pub type Seconds = u8;
 pub type DeciSeconds = u32;
+pub type MilliSeconds = u64;
 pub type MilliVolts = u16;
 pub type Percents = u8;
+pub type Duty = u16;
