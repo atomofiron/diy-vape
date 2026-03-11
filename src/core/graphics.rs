@@ -1,5 +1,5 @@
 use embedded_graphics::geometry::Point;
-use embedded_graphics::mono_font::ascii::{FONT_7X13_BOLD, FONT_7X14};
+use embedded_graphics::mono_font::ascii::{FONT_7X13_BOLD, FONT_7X14, FONT_7X14_BOLD};
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::Primitive;
@@ -17,6 +17,7 @@ type StyledLine = Styled<Line, FigureStyle>;
 
 pub const WHITE_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::On);
 pub const BLACK_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::Off);
+pub const BLACK_BOLD_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14_BOLD, BinaryColor::Off);
 pub const WHITE_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::On);
 pub const BLACK_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::Off);
 pub const WHITE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::On, 1);

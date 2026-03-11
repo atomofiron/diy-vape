@@ -1,5 +1,5 @@
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::strings::{HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
@@ -82,21 +82,21 @@ impl Renderer for State {
             Mode::Power => {
                 display.clear_header(true);
                 let title =  format!(10, "{POWER} {}%", self.config.power.value());
-                Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
+                Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Limit => {
                 display.clear_header(true);
-                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
+                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
             }
             Mode::Resistance => {
                 display.clear_header(true);
-                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), BLACK_TEXT)
+                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
                     .center()
                     .draw(display)
                     .ignore();

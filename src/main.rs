@@ -85,7 +85,7 @@ async fn bustle() -> ! {
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    if display.init().is_err() {
+    if display.init().is_err() { // DisplayError is unaccessible >:(
         red.on();
     }
 
