@@ -19,7 +19,6 @@ pub fn draw_life(
     if restart {
         universe.armageddon();
     }
-
     display.set_addr_mode(AddrMode::Vertical)
         .ignore();
     display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8)).

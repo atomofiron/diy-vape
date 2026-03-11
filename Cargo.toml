@@ -5,11 +5,9 @@ edition = "2024"
 license = "GPL-2"
 
 [dependencies]
-panic-halt = "1.0"
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = { version = "0.7", features = ["device"] }
 nrf52840-hal = { version = "0.19", features = ["rt"] }
-panic-reset = "0.1"
 embedded-hal = "1.0"
 embedded-layout = "0.4"
 embedded-graphics = "0.8"

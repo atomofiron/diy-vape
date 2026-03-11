@@ -7,14 +7,12 @@ use embedded_hal::digital::InputPin;
 use libm::fminf;
 use nrf52840_hal::gpio::p0::Parts as Parts0;
 use nrf52840_hal::gpio::p1::Parts as Parts1;
-use nrf52840_hal::gpio::{DriveConfig, Floating, Level, PullUp, PushPull};
+use nrf52840_hal::gpio::{Floating, Level, PullUp, PushPull};
 use nrf52840_hal::pac::Peripherals;
 use nrf52840_hal::pwm::{Channel, Prescaler, Pwm};
 use nrf52840_hal::rng::Rng;
-use nrf52840_hal::twim::Pins as TwimPins;
 use nrf52840_hal::twim::Twim;
-#[allow(unused_imports)]
-use panic_reset;
+use nrf52840_hal::twim::{Frequency, Pins as TwimPins};
 use ssd1306::command::AddrMode;
 use ssd1306::prelude::*;
 use ssd1306::{I2CDisplayInterface, Ssd1306};
@@ -50,7 +48,8 @@ fn main() -> ! {
 }
 
 async fn bustle() -> ! {
-    let peripherals = Peripherals::take().unwrap();
+    let peripherals = Peripherals::take()
+        .unwrap();
 
     let port0 = Parts0::new(peripherals.P0);
     let port1 = Parts1::new(peripherals.P1);
@@ -65,7 +64,7 @@ async fn bustle() -> ! {
 
     blue.blink();
 
-    let pin_02 = port0.p0_02.into_push_pull_output_drive(Level::Low, DriveConfig::HighDrive0HighDrive1).degrade();
+    let pin_02 = port0.p0_02.into_push_pull_output(Level::Low).degrade();
     let pwm = Pwm::new(peripherals.PWM0);
     pwm.set_output_pin(Channel::C0, pin_02);
     pwm.set_prescaler(Prescaler::Div1);
@@ -81,7 +80,7 @@ async fn bustle() -> ! {
         .degrade();
 
     let pins = TwimPins { scl, sda };
-    let i2c = Twim::new(peripherals.TWIM0, pins, nrf52840_hal::twim::Frequency::K400);
+    let i2c = Twim::new(peripherals.TWIM0, pins, Frequency::K400);
     let interface = I2CDisplayInterface::new(i2c);
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
@@ -111,11 +110,8 @@ async fn bustle() -> ! {
         peripherals.SAADC,
         peripherals.POWER,
     );
-
     let mut rng = Rng::new(peripherals.RNG);
-
     let mut state = State::with(config, stats);
-    state.render_all(&mut display);
 
     green.blink();
 
@@ -133,11 +129,13 @@ async fn bustle() -> ! {
         } else if was_touched && !touched {
             green.off()
         }
-        let is_charging = is_charging() || charge.is_usb_connected(); // todo remove '|| connected'
-        let interaction = was_touched != touched || state.buttons != (left_pressed, right_pressed) || state.battery_charging != is_charging;
+        let interaction = was_touched != touched
+            || state.buttons != (left_pressed, right_pressed)
+            || state.battery_charging != (is_charging() || charge.is_usb_connected()); // todo remove '|| connected'
         was_touched = touched;
+        let mut now = timer.now();
         if interaction {
-            last_interaction = timer.now();
+            last_interaction = now;
         }
         if !state.is_display_on {
             match interaction {
@@ -148,20 +146,20 @@ async fn bustle() -> ! {
             continue
         }
 
-        let now = timer.now();
         handle_pressed(&mut state, left_pressed, right_pressed, now)
             .if_some(|new| pwm.set_duty_off(Channel::C0, *new));
 
         if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
+            state.render_dirty(&mut display);
+            update_battery(&mut charge, &mut state, now);
         } else if state.battery_charging {
             was_touched = screen_saver(&mut display, &mut rng, &mut charge, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
-            last_interaction = timer.now();
+            now = timer.now();
+            last_interaction = now;
             state.mark_all_dirty();
         } else {
             set_display(&mut state, &mut display, false);
         }
-        update_battery(&mut charge, &mut timer, &mut state);
-        state.render_dirty(&mut display);
         timer.sleep_ms(IDLE_PERIOD as u32)
             .unwrap_or_else(|_| red.blink());
     }
@@ -235,10 +233,9 @@ fn set_display(
 
 fn update_battery(
     charge: &mut Charge,
-    timer: &mut Timer,
     state: &mut State,
+    now: Time,
 ) {
-    let now = timer.now();
     let connected = charge.is_usb_connected();
     let is_charging = is_charging() || connected; // todo remove '|| connected'
     let need_update = state.battery_level.is_none() || charge.last_check == 0 || (now - charge.last_check) > BATTERY_PERIOD;
