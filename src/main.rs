@@ -44,13 +44,12 @@ const MAX_DUTY: Duty = 0x7fff;
 #[entry]
 fn main() -> ! {
     // fake async
-    let _ = blocking(async {
-        async_main().await
-    });
-    loop {}
+    blocking(async {
+        bustle().await
+    })
 }
 
-async fn async_main() -> ! {
+async fn bustle() -> ! {
     let peripherals = Peripherals::take().unwrap();
 
     let port0 = Parts0::new(peripherals.P0);
