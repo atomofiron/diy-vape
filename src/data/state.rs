@@ -2,8 +2,7 @@ use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
 use crate::types::{MilliVolts, Percents, Time};
-use crate::util::round;
-use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE, SECOND};
+use crate::values::{LIMIT_RANGE, MV, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
     pub mode: Mode,
@@ -126,14 +125,12 @@ impl State {
         }
     }
 
+    pub fn volts(&self) -> Option<f32> {
+        self.battery_voltage.map(|v| v as f32 / MV)
+    }
+
     pub fn watts(&self) -> Option<u8> {
-        let volts = self.battery_voltage? as f32 / 1000f32;
-        let ohms = self.config.resistance as f32 / 10f32;
-        return match round(volts * volts / ohms) {
-            w if w < 0 => None,
-            w if w > 255 => None,
-            w => Some(w as u8),
-        }
+        Some(self.config.watts(self.volts()?))
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {

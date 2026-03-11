@@ -1,3 +1,4 @@
+use crate::types::Percents;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
@@ -11,13 +12,17 @@ pub enum Power {
 
 impl Power {
 
-    pub fn value(&self) -> u8 {
+    pub fn value(&self) -> Percents {
         match self {
             Self::Rare => 25,
             Self::Medium => 50,
             Self::Well => 75,
             Self::Hard => 100,
         }
+    }
+
+    pub fn scale(&self) -> f32 {
+        self.value() as f32 / 100.0
     }
 
     pub fn inc(&self) -> Power {

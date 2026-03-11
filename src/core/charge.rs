@@ -1,3 +1,4 @@
+use crate::values::{MV, VOLTS_MIN};
 use cortex_m::asm::delay;
 use embedded_hal::digital::OutputPin;
 use hal::saadc::{Gain, Oversample, Reference, Resolution, Saadc, SaadcConfig};
@@ -51,7 +52,7 @@ impl Charge {
             .for_each(|v| *v = self.read_mv() as u32);
         self.disable_measuring();
         let avg = arr.iter().sum::<u32>() / arr.len() as u32;
-        let mut percents = (avg as i32 - 3500) / 7;
+        let mut percents = (avg as i32 - (VOLTS_MIN * MV) as i32) / 7;
         percents = match () {
             _ if percents < 0 => 0,
             _ if percents > 100 => 100,

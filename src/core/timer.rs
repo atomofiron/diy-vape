@@ -2,14 +2,15 @@ use nrf52840_hal as hal;
 use nrf52840_hal::pac::{CLOCK, RTC1};
 use nrf52840_hal::rtc::{RtcCompareReg, RtcInterrupt};
 use nrf52840_hal::{pac, Rtc};
+use crate::types::Time;
 
-const RTC_1_KHZ: u32 = 31; // 1Hz ≈ 1ms
+const RTC_1_KHZ: u32 = 31; // 1kHz, 1Hz ≈ 1ms
 const MAX_COUNTER: u32 = 0xFFFFFF;
 
 pub struct Timer {
     rtc: Rtc<RTC1>,
     last: u32,
-    total: u64,
+    total: Time,
 }
 
 impl Timer {
@@ -22,7 +23,7 @@ impl Timer {
         return Timer { rtc, last: 0, total: 0 };
     }
 
-    pub fn now(&mut self) -> u64 {
+    pub fn now(&mut self) -> Time {
         self.update_total();
         return self.total
     }
@@ -59,8 +60,8 @@ impl Timer {
     fn update_total(&mut self) {
         let counter = self.rtc.get_counter();
         self.total += match () {
-            _ if counter >= self.last => (counter - self.last) as u64,
-            _ => (MAX_COUNTER - counter) as u64 + counter as u64,
+            _ if counter >= self.last => (counter - self.last) as Time,
+            _ => (MAX_COUNTER - counter) as Time + counter as Time,
         };
         self.last = counter;
     }
