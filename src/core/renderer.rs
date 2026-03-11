@@ -8,8 +8,8 @@ use crate::data::state::State;
 use crate::ext::result_ext::ResultExt;
 use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
-use crate::types::Display;
-use crate::values::{PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
+use crate::types::{Display, Progress, Time};
+use crate::values::{PROGRESS_MAX, PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
 use embedded_graphics::prelude::*;
@@ -53,13 +53,16 @@ impl Renderer for State {
     }
 
     fn draw_header(&mut self, display: &mut Display) {
-        match self.mode {
-            Mode::Work(progress) => {
+        match &self.mode {
+            Mode::Work { duration, .. } => {
                 display.clear_header(false);
                 let point = Point::new(PROGRESS_OFFSET, 0);
                 let size = Size::new(PROGRESS_WIDTH, AREA);
                 let corners = CornerRadii::new(Size::new(RADIUS, RADIUS));
-                let progress = progress as u32 / PROGRESS_STEP;
+                let limit = self.limit_ms();
+                let max = PROGRESS_MAX as Time;
+                let progress = min(duration * max / limit, max) as Progress;
+                let progress = (progress / PROGRESS_STEP) as u32;
                 let fill_size = kopy!(size, width = min(progress + AREA, PROGRESS_WIDTH));
                 RoundedRectangle::new(Rectangle::new(point, fill_size), corners)
                     .into_styled(WHITE_FILL)
@@ -232,7 +235,7 @@ impl Renderer for State {
 
     fn draw_buttons(&mut self, display: &mut Display) {
         let y = match self.mode {
-            Mode::Work(_) => 7,
+            Mode::Work { .. } => 7,
             Mode::Power |
             Mode::Limit => 23 + OFFSET,
             Mode::Resistance => 39 + OFFSET,

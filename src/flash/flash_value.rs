@@ -1,9 +1,9 @@
 use crate::flash::savable::Savable;
 use sequential_storage::map::{SerializationError, Value};
 
-pub struct FlashValue<T>(pub T) where T : Savable;
+pub struct FlashValue<T: Savable>(pub T);
 
-impl<'a, T> Value<'a> for FlashValue<T> where T: Savable {
+impl<'a, T: Savable> Value<'a> for FlashValue<T> {
 
     fn serialize_into(&self, buffer: &mut [u8]) -> Result<usize, SerializationError> {
         let used = postcard::to_slice(&self.0, buffer)

@@ -1,5 +1,5 @@
 use crate::flash::flash::AsyncFlash;
-use nrf52840_hal::gpio::{Output, Pin, PushPull};
+use nrf52840_hal::gpio::{Input, Output, Pin};
 use nrf52840_hal::pac::TWIM0;
 use nrf52840_hal::Twim;
 use sequential_storage::cache::NoCache;
@@ -10,7 +10,8 @@ use ssd1306::Ssd1306;
 
 pub type Display = Ssd1306<I2CInterface<Twim<TWIM0>>, DisplaySize128x64, BufferedGraphicsMode<DisplaySize128x64>>;
 pub type Storage = MapStorage<u8, AsyncFlash, NoCache>;
-pub type POPP = Pin<Output<PushPull>>;
+pub type PinIn<M> = Pin<Input<M>>;
+pub type PinOut<M> = Pin<Output<M>>;
 pub type DeciOhms = u8;
 pub type Seconds = u8;
 pub type DeciSeconds = u32;
@@ -18,3 +19,5 @@ pub type MilliSeconds = u64;
 pub type MilliVolts = u16;
 pub type Percents = u8;
 pub type Duty = u16;
+pub type Progress = u8;
+pub type Time = u64;

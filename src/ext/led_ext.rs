@@ -1,5 +1,5 @@
 use crate::ext::result_ext::ResultExt;
-use crate::types::POPP;
+use crate::types::PinOut;
 use embedded_hal::digital::OutputPin;
 
 pub trait LedExt {
@@ -8,7 +8,7 @@ pub trait LedExt {
     fn blink(&mut self);
 }
 
-impl LedExt for POPP {
+impl<M> LedExt for PinOut<M> {
 
     fn on(&mut self) {
         self.set_low().ignore();

@@ -1,11 +1,12 @@
 #![no_std]
 #![no_main]
 
+use core::cmp::min;
 use cortex_m_rt::entry;
 use embedded_hal::digital::InputPin;
 use nrf52840_hal::gpio::p0::Parts as Parts0;
 use nrf52840_hal::gpio::p1::Parts as Parts1;
-use nrf52840_hal::gpio::{DriveConfig, Level};
+use nrf52840_hal::gpio::{DriveConfig, Floating, Level, PullUp, PushPull};
 use nrf52840_hal::pac::Peripherals;
 use nrf52840_hal::pwm::{Channel, Prescaler, Pwm};
 use nrf52840_hal::rng::Rng;
@@ -23,17 +24,17 @@ use vape::data::config::Config;
 use vape::data::mode::Mode;
 use vape::data::state::State;
 use vape::data::stats::Stats;
-use vape::ext::option_ext::OptionExt;
-use vape::ext::pin_ext::LedExt;
+use vape::ext::led_ext::LedExt;
+use vape::ext::option_ext::{OptionExt, OptionOptionExt};
 use vape::ext::result_ext::ResultExt;
 use vape::flash::flash::AsyncFlash;
 use vape::flash::flash_storage::FlashStorage;
 use vape::flash::savable::Savable;
 use vape::games::life::life::draw_life;
-use vape::types::{Display, Duty, POPP};
+use vape::types::{Display, Duty, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, IDLE_PERIOD, PROGRESS_MAX, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
+use vape::values::{BATTERY_PERIOD, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x1;
@@ -56,9 +57,9 @@ async fn async_main() -> ! {
     let port0 = Parts0::new(peripherals.P0);
     let port1 = Parts1::new(peripherals.P1);
 
-    let mut touch = port1.p1_12.into_floating_input();
-    let mut left_btn = port0.p0_03.into_pullup_input();
-    let mut right_btn = port0.p0_28.into_pullup_input();
+    let mut touch = port1.p1_12.into_floating_input().degrade();
+    let mut left_btn = port0.p0_03.into_pullup_input().degrade();
+    let mut right_btn = port0.p0_28.into_pullup_input().degrade();
 
     let mut red = port0.p0_26.into_push_pull_output(Level::High).degrade();
     let mut green = port0.p0_30.into_push_pull_output(Level::High).degrade();
@@ -121,108 +122,76 @@ async fn async_main() -> ! {
 
     let mut was_touched = false;
     let mut last_action = timer.now();
-    let mut cool_down = false;
     loop {
         let touched = touch.is_high().unwrap_or(false);
-        let touch_changed = touched != was_touched;
-        was_touched = touched;
-        if handle_touched(&mut state, &mut green, touch_changed, touched) {
-            set_display(&mut state, &mut display, true);
-            last_action = timer.now();
-            continue
-        }
         let left_pressed = left_btn.is_low().unwrap_or(false);
         let right_pressed = right_btn.is_low().unwrap_or(false);
-        let changed = state.set_pressed(left_pressed, right_pressed);
-        if changed {
-            set_display(&mut state, &mut display, true);
-        }
-        let new_duty = handle_pressed(&mut state, changed, left_pressed, right_pressed, &mut cool_down);
-        if let Some(new_duty) = new_duty {
-            pwm.set_duty_off(Channel::C0, new_duty);
-        }
-        let now = timer.now();
-        if state.is_smth_dirty() {
-            last_action = now;
-        } else if (now - last_action) < SCREENSAVER_TIMEOUT {
-        } else if !state.battery_charging {
-            let mut flag = true;
-            let mut start = true;
-            while touch.is_low().unwrap_or(false) {
-                match flag {
-                    true => green.on(),
-                    false => green.off(),
-                }
-                flag = !flag;
-                draw_life(&mut display, &mut timer, &mut rng, false, start);
-                start = false;
+        if !was_touched && touched {
+            green.on();
+            if state.is_display_on {
+                state.next_mode();
             }
-            was_touched = true;
-            display.set_addr_mode(AddrMode::Horizontal)
-                .unwrap();
-            state.mark_all_dirty();
+        } else if was_touched && !touched {
+            green.off()
+        }
+        let interaction = was_touched != touched || state.buttons != (left_pressed, right_pressed);
+        was_touched = touched;
+        if interaction {
             last_action = timer.now();
+        }
+        if !state.is_display_on {
+            match interaction {
+                true => set_display(&mut state, &mut display, true),
+                false => timer.sleep_ms(SLEEP_PERIOD as u32),
+            }
+            continue
+        }
+
+        let now = timer.now();
+        handle_pressed(&mut state, left_pressed, right_pressed, now)
+            .if_some(|new| pwm.set_duty_off(Channel::C0, *new));
+
+        if touched || left_pressed || right_pressed || (now - last_action) < SCREENSAVER_TIMEOUT {
+        } else if state.battery_charging {
+            was_touched = screen_saver(&mut display, &mut rng, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
+            last_action = timer.now();
+            state.mark_all_dirty();
         } else {
             set_display(&mut state, &mut display, false);
         }
         update_battery(&mut charge, &mut timer, &mut state);
         state.render_dirty(&mut display);
-        timer.sleep_ms(if state.is_display_on { IDLE_PERIOD } else { SLEEP_PERIOD } as u32);
+        timer.sleep_ms(IDLE_PERIOD as u32);
     }
-}
-
-fn handle_touched(
-    state: &mut State,
-    green: &mut POPP,
-    changed: bool,
-    touched: bool,
-) -> bool {
-    match touched {
-        _ if !changed => (),
-        _ if touched && !state.is_display_on => return true,
-        true => {
-            green.on();
-            state.next_mode();
-        },
-        false => green.off(),
-    }
-    return false
 }
 
 fn handle_pressed(
     state: &mut State,
-    changed: bool,
     left_pressed: bool,
     right_pressed: bool,
-    cool_down: &mut bool,
+    now: u64,
 ) -> Option<Duty> {
     let mut new_duty = None;
-    if !state.is_display_on {
-        return new_duty
-    }
     match state.mode.clone() {
-        Mode::Work(progress) => {
-            match () {
-                _ if !*cool_down && left_pressed && right_pressed => {
-                    new_duty = Some(TEST_DUTY);
-                    state.inc_progress();
-                    if progress == PROGRESS_MAX {
-                        *cool_down = true;
-                        new_duty = Some(ZERO_DUTY);
-                        state.reset_progress();
-                    }
-                },
-                _ if changed && !left_pressed && !right_pressed => {
-                    *cool_down = false;
-                    new_duty = Some(ZERO_DUTY);
-                    state.reset_progress();
-                },
-                _ if changed => new_duty = Some(ZERO_DUTY),
-                _ => (),
+        Mode::Work { mut duration, prev, cool_down } => {
+            let limit = state.limit_ms();
+            let cool_down = duration >= limit || cool_down && (duration > 0 || left_pressed || right_pressed);
+            match cool_down || !left_pressed || !right_pressed {
+                true => duration -= min(now - prev, duration),
+                _ if !state.buttons.0 => (),
+                _ if !state.buttons.1 => (),
+                _ => duration += now - prev,
+            }
+            state.set_work(duration, now, cool_down);
+            if cool_down || !left_pressed || !right_pressed {
+                new_duty = Some(ZERO_DUTY);
+            } else if left_pressed && right_pressed {
+                new_duty = Some(TEST_DUTY)
             }
         }
-        _ if !changed => (),
-        _ if left_pressed && right_pressed => (),
+        _ if state.buttons == (left_pressed, right_pressed) => (),
+        _ if state.buttons.0 || state.buttons.1 => (),
+        _ if left_pressed == right_pressed => (),
         Mode::Power if left_pressed => state.dec_power(),
         Mode::Power if right_pressed => state.inc_power(),
         Mode::Limit if left_pressed => state.dec_limit(),
@@ -231,14 +200,19 @@ fn handle_pressed(
         Mode::Resistance if right_pressed => state.inc_resistance(),
         _ => (),
     }
+    state.set_pressed(left_pressed, right_pressed);
     return new_duty
 }
 
-fn set_display(state: &mut State, display: &mut Display, on: bool) {
+fn set_display(
+    state: &mut State,
+    display: &mut Display,
+    on: bool,
+) {
     if on != state.is_display_on {
-    state.is_display_on = on;
-    display.set_display_on(on)
-        .ignore();
+        state.is_display_on = on;
+        display.set_display_on(on)
+            .ignore();
     }
 }
 
@@ -274,4 +248,36 @@ fn update_battery(
 
 fn is_charging() -> bool {
     false // todo check charging leds
+}
+
+fn screen_saver(
+    display: &mut Display,
+    rng: &mut Rng,
+    touch: &mut PinIn<Floating>,
+    left_btn: &mut PinIn<PullUp>,
+    right_btn: &mut PinIn<PullUp>,
+    green: &mut PinOut<PushPull>,
+    now: Time,
+) -> bool {
+    let mut flag = true;
+    let mut start = true;
+    let mut touched = false;
+    let mut left_pressed = false;
+    let mut right_pressed = false;
+    while !touched && !left_pressed && !right_pressed {
+        match flag {
+            true => green.on(),
+            false => green.off(),
+        }
+        flag = !flag;
+        draw_life(display, rng, false, start, now);
+        start = false;
+        touched = touch.is_high().unwrap_or(false);
+        left_pressed = left_btn.is_low().unwrap_or(false);
+        right_pressed = right_btn.is_low().unwrap_or(false);
+    }
+    green.off();
+    display.set_addr_mode(AddrMode::Horizontal)
+        .unwrap();
+    return touched
 }

@@ -1,6 +1,5 @@
-use crate::core::timer::Timer;
 use crate::games::life::universe::{Universe, HEIGHT, WIDTH};
-use crate::types::Display;
+use crate::types::{Display, Time};
 use nrf52840_hal::Rng;
 use ssd1306::command::AddrMode;
 
@@ -8,10 +7,10 @@ static mut UNIVERSE: Universe = Universe::new();
 
 pub fn draw_life(
     display: &mut Display,
-    timer: &mut Timer,
     rng: &mut Rng,
     with_splashes: bool,
     restart: bool,
+    now: Time,
 ) {
     let universe_ptr = &raw mut UNIVERSE;
     let universe = unsafe { &mut *universe_ptr };
@@ -20,7 +19,6 @@ pub fn draw_life(
         universe.armageddon();
     }
 
-    let now = timer.now();
     display.set_addr_mode(AddrMode::Vertical)
         .unwrap();
     display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8)).

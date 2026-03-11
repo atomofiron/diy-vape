@@ -1,9 +1,9 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::types::{MilliVolts, Percents};
+use crate::types::{MilliVolts, Percents, Time};
 use crate::util::round;
-use crate::values::{LIMIT_RANGE, PROGRESS_MAX, RESISTANCE_RANGE};
+use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
     pub mode: Mode,
@@ -33,7 +33,7 @@ impl State {
 
     pub fn with(config: Config, stats: Stats) -> Self {
         Self {
-            mode: Mode::Work(0),
+            mode: Mode::default(),
             config,
             stats,
 
@@ -66,38 +66,36 @@ impl State {
 
     fn mark_current_dirty(&mut self) {
         match self.mode {
-            Mode::Work(_) => (),
+            Mode::Work { .. } => (),
             Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
             Mode::Resistance => self.is_resistance_or_watt_dirty = true,
         }
     }
 
-    pub fn inc_progress(&mut self) {
+    pub fn set_work(&mut self, duration: Time, prev: Time, cool_down: bool) {
         match &mut self.mode {
-            Mode::Work(PROGRESS_MAX) => return,
-            Mode::Work(p) => *p += 3,
+            Mode::Work { duration: d, prev: p, cool_down: c } => {
+                if *d != duration {
+                    self.is_progress_dirty = true;
+                }
+                *d = duration;
+                *p = prev;
+                *c = cool_down;
+            },
             _ => return,
-        }
-        self.is_progress_dirty = true;
-    }
-
-    pub fn reset_progress(&mut self) {
-        match &mut self.mode {
-            Mode::Work(0) => return,
-            Mode::Work(p) => *p = 0,
-            _ => return,
-        }
-        self.is_progress_dirty = true;
+        };
     }
 
     pub fn inc_power(&mut self) {
         self.config.power = self.config.power.inc();
         self.is_power_or_limit_dirty = true;
+        self.is_header_dirty = true;
     }
 
     pub fn dec_power(&mut self) {
         self.config.power = self.config.power.dec();
         self.is_power_or_limit_dirty = true;
+        self.is_header_dirty = true;
     }
 
     pub fn inc_limit(&mut self) {
@@ -138,14 +136,11 @@ impl State {
         }
     }
 
-    pub fn set_pressed(&mut self, left: bool, right: bool) -> bool {
-        return if self.buttons != (left, right) {
+    pub fn set_pressed(&mut self, left: bool, right: bool) {
+        if self.buttons != (left, right) {
             self.are_buttons_dirty = true;
             self.buttons.0 = left;
             self.buttons.1 = right;
-            true
-        } else {
-            false
         }
     }
 
@@ -165,6 +160,10 @@ impl State {
         self.is_power_or_limit_dirty = true;
         self.is_resistance_or_watt_dirty = true;
         self.is_footer_dirty = true;
+    }
+
+    pub fn limit_ms(&self) -> Time {
+        self.config.limit as Time * SECOND
     }
 }
 
