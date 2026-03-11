@@ -1,6 +1,6 @@
 use crate::data::power::Power;
 use crate::flash::savable::Savable;
-use crate::types::{DeciOhm, Seconds};
+use crate::types::{DeciOhm, Second};
 use crate::util::round;
 use crate::values::SYSTEM_RESISTANCE;
 use libm::powf;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
 pub struct Config {
     pub power: Power,
-    pub limit: Seconds,
+    pub limit: Second,
     pub resistance: DeciOhm,
 }
 

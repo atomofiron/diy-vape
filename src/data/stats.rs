@@ -1,11 +1,11 @@
 use crate::flash::savable::Savable;
-use crate::types::DeciSeconds;
+use crate::types::DeciSecond;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
 pub struct Stats {
-    pub total: DeciSeconds,
+    pub total: DeciSecond,
     pub count: u32,
 }
 

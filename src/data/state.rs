@@ -1,7 +1,7 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::types::{MilliVolts, Percents, Time};
+use crate::types::{MilliVolt, Percent, Time};
 use crate::values::{LIMIT_RANGE, MV, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
@@ -13,8 +13,8 @@ pub struct State {
 
     pub usb_connected: bool, // nrf52840
     pub battery_charging: bool, // 4056H
-    pub battery_voltage: Option<MilliVolts>,
-    pub battery_level: Option<Percents>,
+    pub battery_voltage: Option<MilliVolt>,
+    pub battery_level: Option<Percent>,
 
     pub is_display_on: bool,
 
