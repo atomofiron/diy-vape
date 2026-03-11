@@ -1,8 +1,8 @@
+use crate::types::Time;
 use nrf52840_hal as hal;
 use nrf52840_hal::pac::{CLOCK, RTC1};
-use nrf52840_hal::rtc::{RtcCompareReg, RtcInterrupt};
+use nrf52840_hal::rtc::{Error, RtcCompareReg, RtcInterrupt};
 use nrf52840_hal::{pac, Rtc};
-use crate::types::Time;
 
 const RTC_1_KHZ: u32 = 31; // 1kHz, 1Hz ≈ 1ms
 const MAX_COUNTER: u32 = 0xFFFFFF;
@@ -15,12 +15,13 @@ pub struct Timer {
 
 impl Timer {
 
-    pub fn init(rtc: RTC1, clock: CLOCK) -> Timer {
+    pub fn init(rtc: RTC1, clock: CLOCK) -> Result<Timer, Error> {
         let clocks = hal::clocks::Clocks::new(clock);
         let _clocks = clocks.start_lfclk();
-        let rtc = Rtc::new(rtc, RTC_1_KHZ).unwrap();
+        let rtc = Rtc::new(rtc, RTC_1_KHZ)?;
         rtc.enable_counter();
-        return Timer { rtc, last: 0, total: 0 };
+        let timer = Timer { rtc, last: 0, total: 0 };
+        return Ok(timer);
     }
 
     pub fn now(&mut self) -> Time {
@@ -28,12 +29,12 @@ impl Timer {
         return self.total
     }
 
-    pub fn sleep_ms(&mut self, ms: u32) {
+    pub fn sleep_ms(&mut self, ms: u32) -> Result<(), Error> {
         let counter = self.rtc.get_counter();
         let target = (counter + ms) & MAX_COUNTER;
         self.update_total();
 
-        self.rtc.set_compare(RtcCompareReg::Compare0, target).unwrap();
+        self.rtc.set_compare(RtcCompareReg::Compare0, target)?;
         self.rtc.reset_event(RtcInterrupt::Compare0);
 
         self.rtc.enable_event(RtcInterrupt::Compare0);
@@ -55,6 +56,7 @@ impl Timer {
         self.rtc.reset_event(RtcInterrupt::Compare0);
         self.rtc.disable_event(RtcInterrupt::Compare0);
         self.rtc.disable_interrupt(RtcInterrupt::Compare0, None);
+        return Ok(());
     }
 
     fn update_total(&mut self) {

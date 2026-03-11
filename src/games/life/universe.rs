@@ -1,6 +1,7 @@
-use nrf52840_hal::Rng;
+use crate::ext::result_ext::ResultExt;
 use crate::types::Display;
 use crate::values::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use nrf52840_hal::Rng;
 
 pub const WIDTH: usize = SCREEN_WIDTH as usize;
 pub const HEIGHT: usize = SCREEN_HEIGHT as usize;
@@ -47,7 +48,8 @@ impl Universe {
         self.sow(rng);
         self.evolution(splash);
         let bytes: &[u8] = bytemuck::cast_slice(&self.generation);
-        display.draw(bytes).unwrap();
+        display.draw(bytes)
+            .ignore();
     }
 
     fn sow(&mut self, rng: &mut Rng) {

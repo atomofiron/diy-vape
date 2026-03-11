@@ -1,3 +1,4 @@
+use crate::ext::result_ext::ResultExt;
 use crate::games::life::universe::{Universe, HEIGHT, WIDTH};
 use crate::types::{Display, Time};
 use nrf52840_hal::Rng;
@@ -20,9 +21,9 @@ pub fn draw_life(
     }
 
     display.set_addr_mode(AddrMode::Vertical)
-        .unwrap();
+        .ignore();
     display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8)).
-        unwrap();
+        ignore();
     let splash = with_splashes && (now >= universe.last_splash + 2044); // ≈2 sec
     if splash {
         universe.last_splash = now;

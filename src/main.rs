@@ -73,7 +73,8 @@ async fn async_main() -> ! {
     pwm.set_max_duty(MAX_DUTY);
     pwm.enable();
 
-    let mut timer = Timer::init(peripherals.RTC1, peripherals.CLOCK);
+    let mut timer = Timer::init(peripherals.RTC1, peripherals.CLOCK)
+        .unwrap();
 
     let scl = port0.p0_05.into_floating_input()
         .degrade();
@@ -142,7 +143,8 @@ async fn async_main() -> ! {
         if !state.is_display_on {
             match interaction {
                 true => set_display(&mut state, &mut display, true),
-                false => timer.sleep_ms(SLEEP_PERIOD as u32),
+                false => timer.sleep_ms(SLEEP_PERIOD as u32)
+                    .unwrap_or_else(|_| red.blink()),
             }
             continue
         }
@@ -161,7 +163,8 @@ async fn async_main() -> ! {
         }
         update_battery(&mut charge, &mut timer, &mut state);
         state.render_dirty(&mut display);
-        timer.sleep_ms(IDLE_PERIOD as u32);
+        timer.sleep_ms(IDLE_PERIOD as u32)
+            .unwrap_or_else(|_| red.blink());
     }
 }
 
@@ -301,6 +304,6 @@ fn screen_saver(
     }
     green.off();
     display.set_addr_mode(AddrMode::Horizontal)
-        .unwrap();
+        .ignore();
     return touched
 }

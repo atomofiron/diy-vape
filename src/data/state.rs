@@ -18,12 +18,13 @@ pub struct State {
 
     pub is_display_on: bool,
 
-    pub are_buttons_dirty: bool,
-    pub is_progress_dirty: bool,
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
     pub is_resistance_or_watt_dirty: bool,
     pub is_footer_dirty: bool,
+
+    pub are_buttons_dirty: bool,
+    pub is_progress_dirty: bool,
     pub is_stat_dirty: bool,
     pub is_battery_dirty: bool,
 }
@@ -45,12 +46,13 @@ impl State {
 
             is_display_on: true,
 
-            are_buttons_dirty: true,
-            is_progress_dirty: true,
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
             is_resistance_or_watt_dirty: true,
             is_footer_dirty: true,
+
+            are_buttons_dirty: true,
+            is_progress_dirty: true,
             is_stat_dirty: true,
             is_battery_dirty: true,
         }

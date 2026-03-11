@@ -1,4 +1,4 @@
-use core::str::FromStr;
+use crate::ext::result_ext::ResultExt;
 use heapless::String;
 
 pub trait StrExt {
@@ -13,5 +13,11 @@ impl StrExt for str {
 }
 
 pub fn string<const N: usize>(value: &str) -> String<N> {
-    String::<N>::from_str(value).unwrap()
+    String::<N>::try_from(value).unwrap_or_else(|_| {
+        let mut string = String::<N>::new();
+        for _ in 0..N {
+            string.push('?').ignore();
+        }
+        string
+    })
 }
