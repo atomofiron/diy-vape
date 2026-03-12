@@ -1,8 +1,9 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::types::{MilliVolt, Percent, Time};
-use crate::values::{LIMIT_RANGE, MV, RESISTANCE_RANGE, SECOND};
+use crate::types::{Duty, MilliVolt, Percent, Time};
+use crate::util::round;
+use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
     pub mode: Mode,
@@ -58,6 +59,13 @@ impl State {
         }
     }
 
+    pub fn is_heating(&self) -> bool {
+        match self.mode {
+            Mode::Work { start, .. } => start.is_some(),
+            _ => false,
+        }
+    }
+
     pub fn next_mode(&mut self) {
         self.is_header_dirty = true;
         self.mark_current_dirty();
@@ -73,16 +81,35 @@ impl State {
         }
     }
 
-    pub fn set_work(&mut self, duration: Time, prev: Time, cool_down: bool) {
+    pub fn set_work_duration(
+        &mut self,
+        duration: Time,
+        prev: Time,
+        cool_down: bool,
+    ) {
         match &mut self.mode {
-            Mode::Work { duration: d, prev: p, cool_down: c } => {
+            Mode::Work { duration: d, prev: p, cool_down: c, .. } => {
                 if *d != duration {
                     self.is_progress_dirty = true;
                 }
                 *d = duration;
                 *p = prev;
                 *c = cool_down;
-            },
+            }
+            _ => return,
+        };
+    }
+
+    pub fn set_work_duty(
+        &mut self,
+        start: Option<Time>,
+        duty: Option<Duty>,
+    ) {
+        match &mut self.mode {
+            Mode::Work { start: s, duty: d, .. } => {
+                *s = start;
+                *d = duty;
+            }
             _ => return,
         };
     }
@@ -127,12 +154,9 @@ impl State {
         }
     }
 
-    pub fn volts(&self) -> Option<f32> {
-        self.battery_voltage.map(|v| v as f32 / MV)
-    }
-
-    pub fn watts(&self) -> Option<u8> {
-        Some(self.config.watts(self.volts()?))
+    pub fn watts(&self) -> Option<u16> {
+        let watts = self.config.watts(self.battery_voltage?);
+        Some(round(watts).clamp(0, 255) as u16)
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {

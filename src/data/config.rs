@@ -1,9 +1,6 @@
 use crate::data::power::Power;
 use crate::flash::savable::Savable;
-use crate::types::{DeciOhm, Second};
-use crate::util::round;
-use crate::values::SYSTEM_RESISTANCE;
-use libm::powf;
+use crate::types::{DeciOhm, MilliVolt, Second};
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
@@ -30,15 +27,9 @@ impl Savable for Config {
 
 impl Config {
 
-    pub fn watts(&self, volts: f32) -> u8 {
-        let load = self.resistance as f32 / 10f32;
-        let efficiency = load / (load + SYSTEM_RESISTANCE);
-        let real_volts = volts * efficiency;
-        let real_power = powf(real_volts, 2.0) / load;
-        return match round(real_power) {
-            w if w < 0 => 0,
-            w if w > 255 => 255,
-            w => w as u8,
-        }
+    pub fn watts(&self, mv: MilliVolt) -> f32 {
+        let mv = mv as u32;
+        let load = self.resistance as u32;
+        return (mv.pow(2) / load / 10000) as f32 / 10.0;
     }
 }

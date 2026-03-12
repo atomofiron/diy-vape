@@ -1,3 +1,4 @@
+use core::convert::Infallible;
 use nrf52840_hal::nvmc::NvmcError;
 use sequential_storage::Error;
 
@@ -24,6 +25,16 @@ impl<R> SoftUnwrap<R> for Result<R, Error<NvmcError>> {
                 Error::ItemTooBig |
                 _ => None,
             }
+        }
+    }
+}
+
+impl<R> SoftUnwrap<R> for Result<R, Infallible> {
+
+    fn soft_unwrap(self, /*logger: Logger*/) -> Option<R> {
+        match self {
+            Ok(r) => Some(r),
+            Err(_) => None,
         }
     }
 }

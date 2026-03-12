@@ -1,4 +1,4 @@
-use crate::types::Time;
+use crate::types::{Duty, Time};
 
 #[derive(Clone)]
 pub enum Mode {
@@ -6,6 +6,8 @@ pub enum Mode {
         duration: Time,
         prev: Time,
         cool_down: bool,
+        start: Option<Time>,
+        duty: Option<Duty>,
     },
     Power,
     Limit,
@@ -30,6 +32,8 @@ impl Default for Mode {
             prev: 0,
             duration: 0,
             cool_down: false,
+            start: None,
+            duty: None,
         }
     }
 }

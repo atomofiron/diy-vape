@@ -4,7 +4,7 @@
 use core::cmp::min;
 use cortex_m_rt::entry;
 use embedded_hal::digital::InputPin;
-use libm::fminf;
+use libm::fmaxf;
 use nrf52840_hal::gpio::p0::Parts as Parts0;
 use nrf52840_hal::gpio::p1::Parts as Parts1;
 use nrf52840_hal::gpio::{Floating, Level, PullUp, PushPull};
@@ -146,12 +146,14 @@ async fn bustle() -> ! {
             continue
         }
 
-        handle_pressed(&mut state, left_pressed, right_pressed, now)
+        handle_pressed(&mut state, &mut charge, left_pressed, right_pressed, now)
             .if_some(|new| pwm.set_duty_off(Channel::C0, *new));
 
         if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render_dirty(&mut display);
-            update_battery(&mut charge, &mut state, now);
+            if !state.is_heating() {
+                update_battery(&mut charge, &mut state, now);
+            }
         } else if state.battery_charging {
             was_touched = screen_saver(&mut display, &mut rng, &mut charge, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
@@ -167,13 +169,15 @@ async fn bustle() -> ! {
 
 fn handle_pressed(
     state: &mut State,
+    charge: &mut Charge,
     left_pressed: bool,
     right_pressed: bool,
     now: Time,
 ) -> Option<Duty> {
     let mut new_duty = None;
     match state.mode.clone() {
-        Mode::Work { duration, prev, cool_down } => new_duty = calc_duty(state, left_pressed, right_pressed, now, duration, prev, cool_down),
+        Mode::Work { .. } if charge.is_usb_connected() => (),
+        Mode::Work { duration, prev, cool_down, start, duty } => new_duty = calc_work_progress_and_duty(state, charge, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
         _ if state.buttons == (left_pressed, right_pressed) => (),
         _ if state.buttons.0 || state.buttons.1 => (),
         _ if left_pressed == right_pressed => (),
@@ -189,16 +193,19 @@ fn handle_pressed(
     return new_duty
 }
 
-fn calc_duty(
+fn calc_work_progress_and_duty(
     state: &mut State,
+    charge: &mut Charge,
     left_pressed: bool,
     right_pressed: bool,
     now: Time,
     mut duration: Time,
     prev: Time,
     cool_down: bool,
+    start: Option<Time>,
+    duty: Option<Duty>,
 ) -> Option<Duty> {
-    let volts = state.volts()?;
+    let rest_mv = state.battery_voltage?;
     let limit = state.limit_ms();
     let cool_down = duration >= limit || cool_down && (duration > 0 || left_pressed || right_pressed);
     match cool_down || !left_pressed || !right_pressed {
@@ -207,15 +214,44 @@ fn calc_duty(
         _ if !state.buttons.1 => (),
         _ => duration += now - prev,
     }
-    state.set_work(duration, now, cool_down);
-    if !cool_down && left_pressed && right_pressed {
-        let available = state.config.watts(volts) as f32;
-        let required = state.config.watts(VOLTS_MAX) as f32;
-        let required = required * state.config.power.scale();
-        let scale = fminf(required / available, 1.0);
-        Some((TEST_DUTY as f32 * scale) as u16)
-    } else {
-        Some(ZERO_DUTY)
+    state.set_work_duration(duration, now, cool_down);
+    return match duty {
+        _ if cool_down || !left_pressed || !right_pressed => {
+            if duration == 0 {
+                state.set_work_duty(None, None);
+            }
+            Some(ZERO_DUTY)
+        },
+        duty @ Some(_) => return duty,
+        None => {
+            if start.is_none() {
+                charge.start_measuring();
+            }
+            let start = start.unwrap_or(now);
+            if now - start > 100 {
+                match charge.finish_measuring() {
+                    None => {
+                        state.set_work_duration(duration, now, true);
+                        state.set_work_duty(None, None);
+                        Some(ZERO_DUTY)
+                    },
+                    Some(mv) => {
+                        let theoretical_max = state.config.watts(VOLTS_MAX);
+                        let theoretical = state.config.watts(rest_mv);
+                        let current = state.config.watts(mv);
+                        let drawdown = fmaxf(0.0, theoretical - current);
+                        let target = (theoretical_max - drawdown) * state.config.power.scale();
+                        let scale = (target / current).clamp(0.0, 1.0);
+                        let duty = (MAX_DUTY as f32 * scale) as Duty;
+                        state.set_work_duty(Some(start), Some(TEST_DUTY));
+                        Some(duty)
+                    }
+                }
+            } else {
+                state.set_work_duty(Some(start), None);
+                Some(TEST_DUTY)
+            }
+        },
     }
 }
 
