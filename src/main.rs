@@ -149,10 +149,12 @@ async fn bustle() -> ! {
         let duty = state.duty()
             .keep_if(left_pressed && right_pressed);
         pwm.set_duty_off(Channel::C0, duty.unwrap_or(ZERO_DUTY));
-        let brightness = Brightness::custom(DISPLAY_PRECHARGE, state.config.brightness());
-        display.set_brightness(brightness)
-            .ignore();
 
+        if state.is_brightness_dirty {
+            let brightness = Brightness::custom(DISPLAY_PRECHARGE, state.config.brightness());
+            display.set_brightness(brightness)
+                .ignore();
+        }
         if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render_dirty(&mut display);
             if duty.is_none() {
