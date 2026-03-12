@@ -1,7 +1,7 @@
 use crate::core::cleaner::Cleaner;
 use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
-use crate::core::strings::{HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
+use crate::core::strings::{BRIGHTNESS, HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
 use crate::data::power::Power;
 use crate::data::state::State;
@@ -9,7 +9,7 @@ use crate::ext::result_ext::ResultExt;
 use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::types::{Display, Progress, Time};
-use crate::values::{PROGRESS_MAX, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
+use crate::values::{HEADER_OFFSET, HEADER_WIDTH, PROGRESS_MAX, PROGRESS_STEP, SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
 use embedded_graphics::prelude::*;
@@ -20,7 +20,6 @@ use embedded_layout::prelude::{horizontal, vertical, Align, Chain};
 use embedded_layout::View;
 
 pub trait Renderer {
-    fn render_all(&mut self, display: &mut Display);
 
     fn draw_header(&mut self, display: &mut Display);
     fn render_header(&mut self, display: &mut Display);
@@ -31,8 +30,11 @@ pub trait Renderer {
     fn draw_resistance_and_watt(&mut self, display: &mut Display);
     fn render_resistance_and_watt(&mut self, display: &mut Display);
 
-    fn draw_footer(&mut self, display: &mut Display);
-    fn render_footer(&mut self, display: &mut Display);
+    fn draw_brightness(&mut self, display: &mut Display);
+    fn render_brightness(&mut self, display: &mut Display);
+
+    fn draw_statusbar(&mut self, display: &mut Display);
+    fn render_statusbar(&mut self, display: &mut Display);
 
     fn draw_buttons(&mut self, display: &mut Display);
     fn render_buttons(&mut self, display: &mut Display);
@@ -42,15 +44,6 @@ pub trait Renderer {
 }
 
 impl Renderer for State {
-
-    fn render_all(&mut self, display: &mut Display) {
-        self.draw_header(display);
-        self.draw_power_and_limit(display);
-        self.draw_resistance_and_watt(display);
-        self.draw_footer(display);
-
-        display.flush().ignore();
-    }
 
     fn draw_header(&mut self, display: &mut Display) {
         let title = match &self.mode {
@@ -62,7 +55,7 @@ impl Renderer for State {
                 let max = PROGRESS_MAX as Time;
                 let progress = min(duration * max / limit, max) as Progress;
                 let progress = (progress / PROGRESS_STEP) as u32;
-                let fill_size = kopy!(size, width = min(progress + AREA, PROGRESS_WIDTH));
+                let fill_size = kopy!(size, width = min(progress + AREA, HEADER_WIDTH));
                 RoundedRectangle::new(Rectangle::new(point, fill_size), CORNER_RADII)
                     .into_styled(WHITE_FILL)
                     .draw(display)
@@ -90,6 +83,7 @@ impl Renderer for State {
             },
             Mode::Limit => LIMIT,
             Mode::Resistance => RESISTANCE,
+            Mode::Brightness => BRIGHTNESS,
         };
         display.clear_header(true);
         Text::new(title, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
@@ -178,7 +172,35 @@ impl Renderer for State {
         display.flush().ignore();
     }
 
-    fn draw_footer(&mut self, display: &mut Display) {
+    fn draw_brightness(&mut self, display: &mut Display) {
+        display.clear_footer();
+        let step = HEADER_WIDTH / 9 * 2;
+        let offset = HEADER_OFFSET + (HEADER_WIDTH - step * 9 / 2) as i32 / 2;
+        let y = (SCREEN_HEIGHT - AREA / 2) as i32;
+        let brightness = self.config.brightness as i32;
+        let focused = self.mode == Mode::Brightness;
+        for i in 0..5 {
+            let x = offset + i * step as i32;
+            let on = i <= brightness;
+            match on || focused {
+                true => RoundedRectangle::new(Rectangle::new(Point::new(x, y), Size::new(step / 2, 4)), CornerRadii::new(Size::new(2, 2)))
+                    .into_styled(if on && focused { WHITE_FILL } else { WHITE_STROKE })
+                    .draw(display)
+                    .ignore(),
+                false => Rectangle::new(Point::new(x + 1, y + 1), Size::new(step / 2 - 2, 2))
+                    .into_styled(WHITE_STROKE)
+                    .draw(display)
+                    .ignore(),
+            }
+        }
+    }
+
+    fn render_brightness(&mut self, display: &mut Display) {
+        self.draw_brightness(display);
+        display.flush().ignore();
+    }
+
+    fn draw_statusbar(&mut self, display: &mut Display) {
         display.clear_footer();
 
         let display_area = display.bounding_box();
@@ -222,8 +244,8 @@ impl Renderer for State {
             .ignore();
     }
 
-    fn render_footer(&mut self, display: &mut Display) {
-        self.draw_footer(display);
+    fn render_statusbar(&mut self, display: &mut Display) {
+        self.draw_statusbar(display);
         display.flush().ignore();
     }
 
@@ -259,10 +281,9 @@ impl Renderer for State {
     }
 
     fn draw_dirty(&mut self, display: &mut Display) {
-        if self.is_header_dirty || self.is_progress_dirty {
+        if self.is_header_dirty {
             self.draw_header(display);
             self.is_header_dirty = false;
-            self.is_progress_dirty = false;
         }
         if self.is_power_or_limit_dirty {
             self.draw_power_and_limit(display);
@@ -272,11 +293,13 @@ impl Renderer for State {
             self.draw_resistance_and_watt(display);
             self.is_resistance_or_watts_dirty = false;
         }
-        if self.is_footer_dirty || self.is_stat_dirty || self.is_battery_dirty {
-            self.draw_footer(display);
-            self.is_footer_dirty = false;
-            self.is_stat_dirty = false;
-            self.is_battery_dirty = false;
+        if self.is_statusbar_dirty && self.is_work() {
+            self.draw_statusbar(display);
+            self.is_statusbar_dirty = false;
+        }
+        if self.is_brightness_dirty && !self.is_work() {
+            self.draw_brightness(display);
+            self.is_brightness_dirty = false;
         }
         if self.are_buttons_dirty {
             self.draw_buttons(display);

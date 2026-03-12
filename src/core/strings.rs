@@ -2,6 +2,7 @@
 pub const POWER: &str = "POWER";
 pub const LIMIT: &str = "LIMIT";
 pub const RESISTANCE: &str = "RESISTANCE";
+pub const BRIGHTNESS: &str = "BRIGHTNESS";
 
 pub const RARE: &str = "RARE";
 pub const MEDIUM: &str = "MEDIUM";

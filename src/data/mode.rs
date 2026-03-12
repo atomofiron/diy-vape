@@ -1,6 +1,6 @@
 use crate::types::{Duty, Time};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Mode {
     Work {
         duration: Time,
@@ -12,16 +12,18 @@ pub enum Mode {
     Power,
     Limit,
     Resistance,
+    Brightness,
 }
 
 impl Mode {
 
     pub fn next(&self) -> Mode {
         match self {
-            Self::Work { .. }  => Mode::Power,
+            Self::Work { .. } => Mode::Power,
             Self::Power => Mode::Limit,
             Self::Limit => Mode::Resistance,
-            Self::Resistance => Mode::default(),
+            Self::Resistance => Mode::Brightness,
+            Self::Brightness => Mode::default(),
         }
     }
 }

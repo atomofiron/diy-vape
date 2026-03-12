@@ -1,4 +1,4 @@
-use crate::values::{PROGRESS_OFFSET, PROGRESS_WIDTH};
+use crate::values::{HEADER_OFFSET, HEADER_WIDTH};
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::ascii::{FONT_7X13_BOLD, FONT_7X14, FONT_7X14_BOLD};
 use embedded_graphics::mono_font::MonoTextStyle;
@@ -27,8 +27,8 @@ const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::O
 
 pub const BATTERY_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
 
-pub const HEADER_POINT: Point = Point::new(PROGRESS_OFFSET, 0);
-pub const HEADER_SIZE: Size = Size::new(PROGRESS_WIDTH, AREA);
+pub const HEADER_POINT: Point = Point::new(HEADER_OFFSET, 0);
+pub const HEADER_SIZE: Size = Size::new(HEADER_WIDTH, AREA);
 pub const CORNER_RADII: CornerRadii = CornerRadii::new(Size::new(RADIUS, RADIUS));
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
 

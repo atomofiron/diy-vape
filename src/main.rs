@@ -32,7 +32,7 @@ use vape::games::life::life::draw_life;
 use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD, VOLTS_MAX};
+use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD, VOLTS_MAX};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -149,6 +149,9 @@ async fn bustle() -> ! {
         let duty = state.duty()
             .keep_if(left_pressed && right_pressed);
         pwm.set_duty_off(Channel::C0, duty.unwrap_or(ZERO_DUTY));
+        let brightness = Brightness::custom(DISPLAY_PRECHARGE, state.config.brightness());
+        display.set_brightness(brightness)
+            .ignore();
 
         if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render_dirty(&mut display);
@@ -187,6 +190,8 @@ fn handle_pressed(
         Mode::Limit if right_pressed => state.inc_limit(),
         Mode::Resistance if left_pressed => state.dec_resistance(),
         Mode::Resistance if right_pressed => state.inc_resistance(),
+        Mode::Brightness if left_pressed => state.dec_brightness(),
+        Mode::Brightness if right_pressed => state.inc_brightness(),
         _ => (),
     }
     state.set_pressed(left_pressed, right_pressed);

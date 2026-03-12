@@ -22,4 +22,5 @@ pub type MilliVolt = u32;
 pub type Percent = u8;
 pub type Duty = u16;
 pub type Progress = u8;
+pub type Brightness = u8;
 pub type Time = u64;

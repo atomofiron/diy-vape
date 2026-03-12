@@ -2,7 +2,7 @@ use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
 use crate::types::{Duty, MilliVolt, MilliWatt, Percent, Time};
-use crate::values::{LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND};
+use crate::values::{BRIGHTNESS_RANGE, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
     pub mode: Mode,
@@ -22,12 +22,11 @@ pub struct State {
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
     pub is_resistance_or_watts_dirty: bool,
+    pub is_brightness_dirty: bool,
     pub is_footer_dirty: bool,
 
     pub are_buttons_dirty: bool,
-    pub is_progress_dirty: bool,
-    pub is_stat_dirty: bool,
-    pub is_battery_dirty: bool,
+    pub is_statusbar_dirty: bool,
 }
 
 impl State {
@@ -51,12 +50,18 @@ impl State {
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
             is_resistance_or_watts_dirty: true,
+            is_brightness_dirty: true,
             is_footer_dirty: true,
 
             are_buttons_dirty: true,
-            is_progress_dirty: true,
-            is_stat_dirty: true,
-            is_battery_dirty: true,
+            is_statusbar_dirty: true,
+        }
+    }
+
+    pub fn is_work(&self) -> bool {
+        match self.mode {
+            Mode::Work { .. } => true,
+            _ => false,
         }
     }
 
@@ -83,9 +88,10 @@ impl State {
 
     fn mark_current_dirty(&mut self) {
         match self.mode {
-            Mode::Work { .. } => (),
+            Mode::Work { .. } => self.is_statusbar_dirty = true,
             Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
             Mode::Resistance => self.is_resistance_or_watts_dirty = true,
+            Mode::Brightness => self.is_brightness_dirty = true,
         }
     }
 
@@ -98,7 +104,7 @@ impl State {
         match &mut self.mode {
             Mode::Work { duration: d, prev: p, cool_down: c, .. } => {
                 if *d != duration {
-                    self.is_progress_dirty = true;
+                    self.is_header_dirty = true;
                 }
                 *d = duration;
                 *p = prev;
@@ -164,6 +170,20 @@ impl State {
         }
     }
 
+    pub fn inc_brightness(&mut self) {
+        if self.config.brightness < BRIGHTNESS_RANGE.end {
+            self.config.brightness += 1;
+            self.is_brightness_dirty = true;
+        }
+    }
+
+    pub fn dec_brightness(&mut self) {
+        if self.config.brightness > BRIGHTNESS_RANGE.start {
+            self.config.brightness -= 1;
+            self.is_brightness_dirty = true;
+        }
+    }
+
     pub fn set_load_mv(&mut self, mw: MilliVolt) {
         if self.load_mv != Some(mw) {
             self.load_mv = Some(mw);
@@ -175,7 +195,7 @@ impl State {
         if self.usb_connected != connected || self.battery_charging != charging {
             self.usb_connected = connected;
             self.battery_charging = charging;
-            self.is_battery_dirty = true;
+            self.is_statusbar_dirty = true;
             self.is_resistance_or_watts_dirty = true;
         }
     }
@@ -189,7 +209,7 @@ impl State {
     pub fn set_battery_info(&mut self, new: Option<(MilliVolt, Percent)>) {
         self.rest_mv = new.map(|(mv, _)| mv);
         self.battery_level = new.map(|(_, level)| level);
-        self.is_battery_dirty = true;
+        self.is_statusbar_dirty = true;
         self.is_resistance_or_watts_dirty = true;
     }
 
@@ -214,20 +234,21 @@ impl State {
 
     pub fn is_smth_dirty(&self) -> bool {
         return self.are_buttons_dirty
-            || self.is_progress_dirty
             || self.is_header_dirty
             || self.is_power_or_limit_dirty
             || self.is_resistance_or_watts_dirty
-            || self.is_footer_dirty
-            || self.is_stat_dirty
-            || self.is_battery_dirty
+            || self.is_brightness_dirty
+            || self.is_statusbar_dirty
     }
 
     pub fn mark_all_dirty(&mut self) {
         self.is_header_dirty = true;
         self.is_power_or_limit_dirty = true;
         self.is_resistance_or_watts_dirty = true;
-        self.is_footer_dirty = true;
+        match self.mode {
+            Mode::Work { .. } => self.is_statusbar_dirty = true,
+            _ => self.is_brightness_dirty = true,
+        }
     }
 
     pub fn limit_ms(&self) -> Time {
