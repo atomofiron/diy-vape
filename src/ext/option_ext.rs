@@ -5,6 +5,7 @@ pub trait OptionOptionExt<T> {
 
 pub trait OptionExt<T> {
     fn if_some(self, action: impl Fn(&T)) -> Self;
+    fn keep_if(self, predicate: bool) -> Self;
 }
 
 impl<T> OptionOptionExt<T> for Option<Option<T>> {
@@ -21,5 +22,12 @@ impl<T> OptionExt<T> for Option<T> {
             action(v)
         }
         return self
+    }
+
+    fn keep_if(self, predicate: bool) -> Self {
+        match predicate {
+            true => self,
+            _ => None,
+        }
     }
 }

@@ -13,9 +13,9 @@ pub struct State {
 
     pub usb_connected: bool, // nrf52840
     pub battery_charging: bool, // 4056H
+    pub battery_level: Option<Percent>,
     pub rest_mv: Option<MilliVolt>,
     pub load_mv: Option<MilliVolt>,
-    pub battery_level: Option<Percent>,
 
     pub is_display_on: bool,
 
@@ -42,9 +42,9 @@ impl State {
 
             usb_connected: false,
             battery_charging: false,
+            battery_level: None,
             rest_mv: None,
             load_mv: None,
-            battery_level: None,
 
             is_display_on: true,
 
@@ -60,10 +60,17 @@ impl State {
         }
     }
 
-    pub fn is_heating(&self) -> bool {
+    pub fn duty(&self) -> Option<Duty> {
         match self.mode {
-            Mode::Work { start, .. } => start.is_some(),
-            _ => false,
+            Mode::Work { duty, .. } => duty,
+            _ => None,
+        }
+    }
+
+    pub fn is_progress_zero(&self) -> bool {
+        match self.mode {
+            Mode::Work { duration, .. } => duration == 0,
+            _ => true,
         }
     }
 
@@ -162,6 +169,28 @@ impl State {
             self.load_mv = Some(mw);
             self.is_resistance_or_watts_dirty = true;
         }
+    }
+
+    pub fn set_usb_info(&mut self, connected: bool, charging: bool) {
+        if self.usb_connected != connected || self.battery_charging != charging {
+            self.usb_connected = connected;
+            self.battery_charging = charging;
+            self.is_battery_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
+        }
+    }
+
+    pub fn reset_battery_info(&mut self) {
+        if self.rest_mv.is_some() || self.battery_level.is_some() {
+            self.set_battery_info(None);
+        }
+    }
+
+    pub fn set_battery_info(&mut self, new: Option<(MilliVolt, Percent)>) {
+        self.rest_mv = new.map(|(mv, _)| mv);
+        self.battery_level = new.map(|(_, level)| level);
+        self.is_battery_dirty = true;
+        self.is_resistance_or_watts_dirty = true;
     }
 
     pub fn watts(&self) -> Option<u8> {

@@ -1,4 +1,4 @@
-use crate::types::{MilliVolt, Percent};
+use crate::types::{MilliVolt, Percent, Time};
 use crate::util::logging::SoftUnwrap;
 use crate::values::{VOLTS_MAX, VOLTS_MIN};
 use cortex_m::asm::delay;
@@ -45,10 +45,11 @@ impl Charge {
             .bit_is_set()
     }
 
-    pub fn get_mv_and_level(&mut self) -> Option<(MilliVolt, Percent)> {
+    pub fn get_mv_and_level(&mut self, now: Time) -> Option<(MilliVolt, Percent)> {
         if self.is_usb_connected() {
             return None;
         }
+        self.last_check = now;
         Self::calibrate();
         if !self.start_measuring() {
             return None;
