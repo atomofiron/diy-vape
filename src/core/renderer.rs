@@ -1,5 +1,5 @@
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::strings::{HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
@@ -9,7 +9,7 @@ use crate::ext::result_ext::ResultExt;
 use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::types::{Display, Progress, Time};
-use crate::values::{PROGRESS_MAX, PROGRESS_OFFSET, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
+use crate::values::{PROGRESS_MAX, PROGRESS_STEP, PROGRESS_WIDTH, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
 use embedded_graphics::prelude::*;
@@ -53,18 +53,17 @@ impl Renderer for State {
     }
 
     fn draw_header(&mut self, display: &mut Display) {
-        match &self.mode {
+        let title = match &self.mode {
             Mode::Work { duration, .. } => {
                 display.clear_header(false);
-                let point = Point::new(PROGRESS_OFFSET, 0);
-                let size = Size::new(PROGRESS_WIDTH, AREA);
-                let corners = CornerRadii::new(Size::new(RADIUS, RADIUS));
+                let point = HEADER_POINT;
+                let size = HEADER_SIZE;
                 let limit = self.limit_ms();
                 let max = PROGRESS_MAX as Time;
                 let progress = min(duration * max / limit, max) as Progress;
                 let progress = (progress / PROGRESS_STEP) as u32;
                 let fill_size = kopy!(size, width = min(progress + AREA, PROGRESS_WIDTH));
-                RoundedRectangle::new(Rectangle::new(point, fill_size), corners)
+                RoundedRectangle::new(Rectangle::new(point, fill_size), CORNER_RADII)
                     .into_styled(WHITE_FILL)
                     .draw(display)
                     .ignore();
@@ -73,35 +72,30 @@ impl Renderer for State {
                     .into_styled(BLACK_FILL)
                     .draw(display)
                     .ignore();
-                RoundedRectangle::new(Rectangle::new(point, size), corners)
+                HEADER_RECTANGLE
                     .into_styled(WHITE_STROKE)
                     .draw(display)
                     .ignore();
                 self.draw_buttons(display);
+                return
             }
             Mode::Power => {
                 display.clear_header(true);
-                let title =  format!(10, "{POWER} {}%", self.config.power.percents());
+                let title = format!(10, "{POWER} {}%", self.config.power.percents());
                 Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
                     .center()
                     .draw(display)
                     .ignore();
-            }
-            Mode::Limit => {
-                display.clear_header(true);
-                Text::new(LIMIT, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
-                    .center()
-                    .draw(display)
-                    .ignore();
-            }
-            Mode::Resistance => {
-                display.clear_header(true);
-                Text::new(RESISTANCE, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
-                    .center()
-                    .draw(display)
-                    .ignore();
-            }
+                return
+            },
+            Mode::Limit => LIMIT,
+            Mode::Resistance => RESISTANCE,
         };
+        display.clear_header(true);
+        Text::new(title, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
+            .center()
+            .draw(display)
+            .ignore();
     }
 
     fn render_header(&mut self, display: &mut Display) {
@@ -234,14 +228,9 @@ impl Renderer for State {
     }
 
     fn draw_buttons(&mut self, display: &mut Display) {
-        let y = match self.mode {
-            Mode::Work { .. } => 7,
-            Mode::Power |
-            Mode::Limit => 23 + OFFSET,
-            Mode::Resistance => 39 + OFFSET,
-        };
-        let left_center = Point::new(RADIUS as i32 - 1, y);
-        let right_center = Point::new((SCREEN_WIDTH - RADIUS) as i32 - 1, y);
+        let delta = RADIUS as i32 - 1;
+        let left_center = Point::new(delta, delta);
+        let right_center = Point::new((SCREEN_WIDTH - RADIUS) as i32 - 1, delta);
         if !self.buttons.0 {
             Circle::with_center(left_center, AREA)
                 .into_styled(BLACK_FILL)

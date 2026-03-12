@@ -1,4 +1,4 @@
-use crate::core::graphics::{AREA, BLACK_FILL, OFFSET, WHITE_FILL};
+use crate::core::graphics::{AREA, BLACK_FILL, HEADER_RECTANGLE, OFFSET, WHITE_FILL};
 use crate::ext::result_ext::ResultExt;
 use crate::types::Display;
 use crate::values::SCREEN_WIDTH;
@@ -16,7 +16,10 @@ pub trait Cleaner {
 impl Cleaner for Display {
 
     fn clear_header(&mut self, white: bool) {
-        clear(self, 0, white)
+        HEADER_RECTANGLE
+            .into_styled(if white { WHITE_FILL } else { BLACK_FILL })
+            .draw(self)
+            .ignore();
     }
 
     fn clear_top_body(&mut self) {
@@ -32,8 +35,8 @@ impl Cleaner for Display {
     }
 }
 
-pub fn clear(display: &mut Display, offset: i32, white: bool) {
-    Rectangle::new(Point::new(0, offset), Size::new(SCREEN_WIDTH, AREA))
+pub fn clear(display: &mut Display, y: i32, white: bool) {
+    Rectangle::new(Point::new(0, y), Size::new(SCREEN_WIDTH, AREA))
         .into_styled(if white { WHITE_FILL } else { BLACK_FILL })
         .draw(display)
         .ignore()

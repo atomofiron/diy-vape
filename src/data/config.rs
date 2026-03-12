@@ -9,6 +9,7 @@ pub struct Config {
     pub power: Power,
     pub limit: Second,
     pub resistance: DeciOhm,
+    pub brightness: u8,
 }
 
 impl Default for Config {
@@ -17,6 +18,7 @@ impl Default for Config {
             power: Power::Medium,
             limit: 3,
             resistance: 12,
+            brightness: 255,
         }
     }
 }

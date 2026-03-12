@@ -1,9 +1,10 @@
+use crate::values::{PROGRESS_OFFSET, PROGRESS_WIDTH};
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::ascii::{FONT_7X13_BOLD, FONT_7X14, FONT_7X14_BOLD};
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::prelude::Primitive;
-use embedded_graphics::primitives::{Line, Polyline, PrimitiveStyle, Styled};
+use embedded_graphics::prelude::{Primitive, Size};
+use embedded_graphics::primitives::{CornerRadii, Line, Polyline, PrimitiveStyle, Rectangle, RoundedRectangle, Styled};
 
 pub const AREA: u32 = 16;
 pub const RADIUS: u32 = AREA / 2;
@@ -25,6 +26,11 @@ pub const BLACK_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::O
 const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::Off, 0);
 
 pub const BATTERY_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
+
+pub const HEADER_POINT: Point = Point::new(PROGRESS_OFFSET, 0);
+pub const HEADER_SIZE: Size = Size::new(PROGRESS_WIDTH, AREA);
+pub const CORNER_RADII: CornerRadii = CornerRadii::new(Size::new(RADIUS, RADIUS));
+pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
 
 // ˟
 const CROSS_POINTS: [Point; 5] = [Point::new(0, 0), Point::new(4, 4), Point::new(2, 2), Point::new(0, 4), Point::new(4, 0)];
