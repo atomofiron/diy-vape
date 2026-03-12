@@ -12,17 +12,13 @@ pub enum Power {
 
 impl Power {
 
-    pub fn value(&self) -> Percent {
+    pub fn percents(&self) -> Percent {
         match self {
             Self::Rare => 25,
             Self::Medium => 50,
             Self::Well => 75,
             Self::Hard => 100,
         }
-    }
-
-    pub fn scale(&self) -> f32 {
-        self.value() as f32 / 100.0
     }
 
     pub fn inc(&self) -> Power {

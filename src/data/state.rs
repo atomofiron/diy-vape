@@ -1,9 +1,8 @@
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::types::{Duty, MilliVolt, Percent, Time};
-use crate::util::round;
-use crate::values::{LIMIT_RANGE, RESISTANCE_RANGE, SECOND};
+use crate::types::{Duty, MilliVolt, MilliWatt, Percent, Time};
+use crate::values::{LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND};
 
 pub struct State {
     pub mode: Mode,
@@ -14,14 +13,15 @@ pub struct State {
 
     pub usb_connected: bool, // nrf52840
     pub battery_charging: bool, // 4056H
-    pub battery_voltage: Option<MilliVolt>,
+    pub rest_mv: Option<MilliVolt>,
+    pub load_mv: Option<MilliVolt>,
     pub battery_level: Option<Percent>,
 
     pub is_display_on: bool,
 
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
-    pub is_resistance_or_watt_dirty: bool,
+    pub is_resistance_or_watts_dirty: bool,
     pub is_footer_dirty: bool,
 
     pub are_buttons_dirty: bool,
@@ -42,14 +42,15 @@ impl State {
 
             usb_connected: false,
             battery_charging: false,
-            battery_voltage: None,
+            rest_mv: None,
+            load_mv: None,
             battery_level: None,
 
             is_display_on: true,
 
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
-            is_resistance_or_watt_dirty: true,
+            is_resistance_or_watts_dirty: true,
             is_footer_dirty: true,
 
             are_buttons_dirty: true,
@@ -77,7 +78,7 @@ impl State {
         match self.mode {
             Mode::Work { .. } => (),
             Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
-            Mode::Resistance => self.is_resistance_or_watt_dirty = true,
+            Mode::Resistance => self.is_resistance_or_watts_dirty = true,
         }
     }
 
@@ -117,12 +118,14 @@ impl State {
     pub fn inc_power(&mut self) {
         self.config.power = self.config.power.inc();
         self.is_power_or_limit_dirty = true;
+        self.is_resistance_or_watts_dirty = true;
         self.is_header_dirty = true;
     }
 
     pub fn dec_power(&mut self) {
         self.config.power = self.config.power.dec();
         self.is_power_or_limit_dirty = true;
+        self.is_resistance_or_watts_dirty = true;
         self.is_header_dirty = true;
     }
 
@@ -143,20 +146,33 @@ impl State {
     pub fn inc_resistance(&mut self) {
         if self.config.resistance < RESISTANCE_RANGE.end {
             self.config.resistance += 1;
-            self.is_resistance_or_watt_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
         }
     }
 
     pub fn dec_resistance(&mut self) {
         if self.config.resistance > RESISTANCE_RANGE.start {
             self.config.resistance -= 1;
-            self.is_resistance_or_watt_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
         }
     }
 
-    pub fn watts(&self) -> Option<u16> {
-        let watts = self.config.watts(self.battery_voltage?);
-        Some(round(watts).clamp(0, 255) as u16)
+    pub fn set_load_mv(&mut self, mw: MilliVolt) {
+        if self.load_mv != Some(mw) {
+            self.load_mv = Some(mw);
+            self.is_resistance_or_watts_dirty = true;
+        }
+    }
+
+    pub fn watts(&self) -> Option<u8> {
+        let mut mw = self.config.milliwatts(self.load_mv?);
+        let percents = self.config.power.percents() as MilliWatt;
+        mw = mw * percents / 100;
+        let mut watts = mw / MW;
+        if (mw % MW) >= (MW / 2) {
+            watts += 1;
+        }
+        Some(watts as u8)
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {
@@ -172,7 +188,7 @@ impl State {
             || self.is_progress_dirty
             || self.is_header_dirty
             || self.is_power_or_limit_dirty
-            || self.is_resistance_or_watt_dirty
+            || self.is_resistance_or_watts_dirty
             || self.is_footer_dirty
             || self.is_stat_dirty
             || self.is_battery_dirty
@@ -181,7 +197,7 @@ impl State {
     pub fn mark_all_dirty(&mut self) {
         self.is_header_dirty = true;
         self.is_power_or_limit_dirty = true;
-        self.is_resistance_or_watt_dirty = true;
+        self.is_resistance_or_watts_dirty = true;
         self.is_footer_dirty = true;
     }
 

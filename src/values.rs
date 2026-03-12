@@ -1,4 +1,4 @@
-use crate::types::{DeciOhm, MilliSecond, MilliVolt, Progress, Second, Time};
+use crate::types::{DeciOhm, MilliSecond, MilliVolt, MilliWatt, Progress, Second, Time};
 use core::ops::Range;
 
 pub const SCREEN_WIDTH: u32 = 128;
@@ -19,5 +19,6 @@ pub const IDLE_PERIOD: MilliSecond = 10;
 pub const SLEEP_PERIOD: MilliSecond = 1000;
 pub const VOLTS_MAX: MilliVolt = 4200;
 pub const VOLTS_MIN: MilliVolt = 3500;
+pub const MW: MilliWatt = 1000;
 
 pub const STORAGE_RANGE: Range<u32> = 0..0x20000;

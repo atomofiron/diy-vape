@@ -4,7 +4,6 @@
 use core::cmp::min;
 use cortex_m_rt::entry;
 use embedded_hal::digital::InputPin;
-use libm::fmaxf;
 use nrf52840_hal::gpio::p0::Parts as Parts0;
 use nrf52840_hal::gpio::p1::Parts as Parts1;
 use nrf52840_hal::gpio::{Floating, Level, PullUp, PushPull};
@@ -30,7 +29,7 @@ use vape::flash::flash::AsyncFlash;
 use vape::flash::flash_storage::FlashStorage;
 use vape::flash::savable::Savable;
 use vape::games::life::life::draw_life;
-use vape::types::{Display, Duty, PinIn, PinOut, Time};
+use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
 use vape::values::{BATTERY_PERIOD, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD, VOLTS_MAX};
@@ -205,7 +204,7 @@ fn calc_work_progress_and_duty(
     start: Option<Time>,
     duty: Option<Duty>,
 ) -> Option<Duty> {
-    let rest_mv = state.battery_voltage?;
+    let rest_mv = state.rest_mv?;
     let limit = state.limit_ms();
     let cool_down = duration >= limit || cool_down && (duration > 0 || left_pressed || right_pressed);
     match cool_down || !left_pressed || !right_pressed {
@@ -236,20 +235,22 @@ fn calc_work_progress_and_duty(
                         Some(ZERO_DUTY)
                     },
                     Some(mv) => {
-                        let theoretical_max = state.config.watts(VOLTS_MAX);
-                        let theoretical = state.config.watts(rest_mv);
-                        let current = state.config.watts(mv);
-                        let drawdown = fmaxf(0.0, theoretical - current);
-                        let target = (theoretical_max - drawdown) * state.config.power.scale();
-                        let scale = (target / current).clamp(0.0, 1.0);
-                        let duty = (MAX_DUTY as f32 * scale) as Duty;
-                        state.set_work_duty(Some(start), Some(TEST_DUTY));
+                        state.set_load_mv(mv);
+                        let theoretical_max = state.config.milliwatts(VOLTS_MAX);
+                        let theoretical = state.config.milliwatts(rest_mv);
+                        let current = state.config.milliwatts(mv);
+                        let drawdown = (theoretical - current).max(0);
+                        let percents = state.config.power.percents() as MilliWatt;
+                        let mut target = (theoretical_max - drawdown) * percents / 100;
+                        target = min(target, current);
+                        let duty = (MAX_DUTY as MilliWatt * (target / 10) / (current / 10)) as Duty;
+                        state.set_work_duty(Some(start), Some(TEST_DUTY)); // todo duty
                         Some(duty)
                     }
                 }
             } else {
                 state.set_work_duty(Some(start), None);
-                Some(TEST_DUTY)
+                Some(TEST_DUTY) // todo MAX_DUTY
             }
         },
     }
@@ -282,17 +283,17 @@ fn update_battery(
         _ => return,
     }
     state.is_battery_dirty = true;
-    state.is_resistance_or_watt_dirty = true;
+    state.is_resistance_or_watts_dirty = true;
     state.usb_connected = connected;
     state.battery_charging = is_charging;
     if !connected && need_update {
         charge.last_check = now;
         let mv_and_level = charge.get_mv_and_level();
+        state.rest_mv = mv_and_level.map(|(mv, _)| mv);
         state.battery_level = mv_and_level.map(|(_, level)| level);
-        state.battery_voltage = mv_and_level.map(|(voltage, _)| voltage);
     } else if connected { // don't measure battery level if usb is connected to the nrf52840
         state.battery_level = None;
-        state.battery_voltage = None;
+        state.rest_mv = None;
     }
 }
 

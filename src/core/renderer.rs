@@ -81,7 +81,7 @@ impl Renderer for State {
             }
             Mode::Power => {
                 display.clear_header(true);
-                let title =  format!(10, "{POWER} {}%", self.config.power.value());
+                let title =  format!(10, "{POWER} {}%", self.config.power.percents());
                 Text::new(title.as_str(), Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
                     .center()
                     .draw(display)
@@ -279,9 +279,9 @@ impl Renderer for State {
             self.draw_power_and_limit(display);
             self.is_power_or_limit_dirty = false;
         }
-        if self.is_resistance_or_watt_dirty {
+        if self.is_resistance_or_watts_dirty {
             self.draw_resistance_and_watt(display);
-            self.is_resistance_or_watt_dirty = false;
+            self.is_resistance_or_watts_dirty = false;
         }
         if self.is_footer_dirty || self.is_stat_dirty || self.is_battery_dirty {
             self.draw_footer(display);

@@ -1,6 +1,6 @@
 use crate::data::power::Power;
 use crate::flash::savable::Savable;
-use crate::types::{DeciOhm, MilliVolt, Second};
+use crate::types::{DeciOhm, MilliVolt, MilliWatt, Second};
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
@@ -27,9 +27,9 @@ impl Savable for Config {
 
 impl Config {
 
-    pub fn watts(&self, mv: MilliVolt) -> f32 {
-        let mv = mv as u32;
-        let load = self.resistance as u32;
-        return (mv.pow(2) / load / 10000) as f32 / 10.0;
+    pub fn milliwatts(&self, mv: MilliVolt) -> MilliWatt {
+        let mv = mv as MilliWatt;
+        let load = self.resistance as MilliWatt;
+        return mv.pow(2) / load / 100;
     }
 }
