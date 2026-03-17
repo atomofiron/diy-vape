@@ -15,7 +15,7 @@ use nrf52840_hal::twim::{Frequency, Pins as TwimPins};
 use ssd1306::command::AddrMode;
 use ssd1306::prelude::*;
 use ssd1306::{I2CDisplayInterface, Ssd1306};
-use vape::core::charge::Charge;
+use vape::core::adc::Adc;
 use vape::core::renderer::Renderer;
 use vape::core::timer::Timer;
 use vape::data::config::Config;
@@ -103,7 +103,7 @@ async fn bustle() -> ! {
         .flat()
         .unwrap_or_default();
 
-    let mut charge = Charge::init(
+    let mut adc = Adc::init(
         port0.p0_14.into_push_pull_output(Level::High),
         port0.p0_31.into_floating_input(),
         peripherals.SAADC,
@@ -130,7 +130,7 @@ async fn bustle() -> ! {
         }
         let interaction = was_touched != touched
             || state.buttons != (left_pressed, right_pressed)
-            || state.battery_charging != (is_charging() || charge.is_usb_connected()); // todo remove '|| connected'
+            || state.battery_charging != (is_charging() || adc.is_usb_connected()); // todo remove '|| connected'
         was_touched = touched;
         let mut now = timer.now();
         if interaction {
@@ -145,7 +145,7 @@ async fn bustle() -> ! {
             continue
         }
 
-        handle_pressed(&mut state, &mut charge, left_pressed, right_pressed, now);
+        handle_pressed(&mut state, &mut adc, left_pressed, right_pressed, now);
         let duty = state.duty()
             .keep_if(left_pressed && right_pressed);
         pwm.set_duty_off(Channel::C0, duty.unwrap_or(ZERO_DUTY));
@@ -158,10 +158,10 @@ async fn bustle() -> ! {
         if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render_dirty(&mut display);
             if duty.is_none() {
-                update_battery(&mut charge, &mut state, &mut blue, now);
+                update_battery(&mut adc, &mut state, &mut blue, now);
             }
         } else if state.battery_charging {
-            was_touched = screen_saver(&mut display, &mut rng, &mut charge, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
+            was_touched = screen_saver(&mut display, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
             last_interaction = now;
             state.mark_all_dirty();
@@ -175,14 +175,14 @@ async fn bustle() -> ! {
 
 fn handle_pressed(
     state: &mut State,
-    charge: &mut Charge,
+    adc: &mut Adc,
     left_pressed: bool,
     right_pressed: bool,
     now: Time,
 ) {
     match state.mode.clone() {
-        Mode::Work { .. } if charge.is_usb_connected() => (),
-        Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, charge, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
+        Mode::Work { .. } if adc.is_usb_connected() => (),
+        Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
         _ if state.buttons == (left_pressed, right_pressed) => (),
         _ if state.buttons.0 || state.buttons.1 => (),
         _ if left_pressed == right_pressed => (),
@@ -201,7 +201,7 @@ fn handle_pressed(
 
 fn calc_work_progress_and_duty(
     state: &mut State,
-    charge: &mut Charge,
+    adc: &mut Adc,
     left_pressed: bool,
     right_pressed: bool,
     now: Time,
@@ -228,11 +228,11 @@ fn calc_work_progress_and_duty(
         _ if cool_down || duration == 0 && !left_pressed && !right_pressed => state.set_work_duty(None, None),
         None if duty.is_some() => (), // duty is measured
         None => {
-            charge.start_measuring();
+            adc.start_measuring();
             state.set_work_duty(Some(now), Some(TEST_DUTY)); // todo MAX_DUTY
         }
         Some(start) if now - start < 100 => (), // measuring
-        Some(_) => match charge.finish_measuring() {
+        Some(_) => match adc.finish_measuring() {
             None => {
                 state.set_work_duration(duration, now, true);
                 state.set_work_duty(None, None);
@@ -266,20 +266,20 @@ fn set_display(
 }
 
 fn update_battery(
-    charge: &mut Charge,
+    adc: &mut Adc,
     state: &mut State,
     blue: &mut PinOut<PushPull>,
     now: Time,
 ) {
-    let connected = charge.is_usb_connected();
+    let connected = adc.is_usb_connected();
     let is_charging = is_charging() || connected; // todo remove '|| connected'
     state.set_usb_info(connected, is_charging);
-    let need_update = state.battery_level.is_none() || charge.last_check == 0 || (now - charge.last_check) > BATTERY_PERIOD;
+    let need_update = state.battery_level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
     let info = match () {
         _ if !state.is_progress_zero() => return,
         _ if connected => return state.reset_battery_info(),
         _ if !need_update => return,
-        _ => charge.get_mv_and_level(now),
+        _ => adc.get_mv_and_level(now),
     };
     blue.blink();
     state.set_battery_info(info);
@@ -292,7 +292,7 @@ fn is_charging() -> bool {
 fn screen_saver(
     display: &mut Display,
     rng: &mut Rng,
-    charge: &mut Charge,
+    adc: &mut Adc,
     touch: &mut PinIn<Floating>,
     left_btn: &mut PinIn<PullUp>,
     right_btn: &mut PinIn<PullUp>,
@@ -302,7 +302,7 @@ fn screen_saver(
     let mut flag = true;
     let mut start = true;
     let mut touched = false;
-    let check_counter_max = 10;
+    let check_counter_max = 8;
     let mut check_counter = check_counter_max;
     while check_counter > 0 {
         match flag {
@@ -319,7 +319,7 @@ fn screen_saver(
             _ if left_btn.is_low().unwrap_or(false) => (),
             _ if right_btn.is_low().unwrap_or(false) => (),
             // todo remove '&& !connected'
-            _ if !is_charging() && !charge.is_usb_connected() => (),
+            _ if !is_charging() && !adc.is_usb_connected() => (),
             _ => check_counter = check_counter_max,
         }
     }

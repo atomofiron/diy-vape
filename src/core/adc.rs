@@ -14,7 +14,7 @@ use nrf52840_hal::pac::SAADC;
 pub type Pin0_14 = P0_14<Output<PushPull>>;
 pub type Pin0_31 = P0_31<Input<Floating>>;
 
-pub struct Charge {
+pub struct Adc {
     pub vbat_en: Pin0_14,
     pub vbat_pin: Pin0_31,
     pub saadc: Saadc,
@@ -22,15 +22,15 @@ pub struct Charge {
     pub last_check: u64,
 }
 
-impl Charge {
+impl Adc {
 
-    pub fn init(p14: Pin0_14, p31: Pin0_31, raw_saadc: SAADC, power: POWER) -> Charge {
+    pub fn init(p14: Pin0_14, p31: Pin0_31, raw_saadc: SAADC, power: POWER) -> Adc {
         let mut cfg = SaadcConfig::default();
         cfg.resolution = Resolution::_12BIT;
         cfg.oversample = Oversample::OVER8X;
         cfg.reference = Reference::INTERNAL; // 0.6V
         cfg.gain = Gain::GAIN1_6; // full-scale ~3.6V
-        Charge {
+        Adc {
             vbat_en: p14,
             vbat_pin: p31,
             saadc: Saadc::new(raw_saadc, cfg),
