@@ -1,6 +1,5 @@
 use crate::ext::error::ErrorMessage;
-use crate::types::{MilliVolt, Percent, Rslt, Time};
-use crate::values::{VOLTS_MAX, VOLTS_MIN};
+use crate::types::{MilliVolt, Rslt, Time};
 use cortex_m::asm::delay;
 use embedded_hal::digital::OutputPin;
 use hal::gpio::p0::{P0_14, P0_31};
@@ -54,7 +53,7 @@ impl Adc {
         self.usb_connected != self.fetch_usb_connection()
     }
 
-    pub fn get_mv_and_level(&mut self, now: Time) -> Rslt<Option<(MilliVolt, Percent)>> {
+    pub fn measure(&mut self, now: Time) -> Rslt<Option<MilliVolt>> {
         if self.fetch_usb_connection() {
             return Ok(None); // it isn't an error
         }
@@ -63,8 +62,7 @@ impl Adc {
         self.start_measuring()?;
         delay(1_000_000);
         let mv = self.finish_measuring()?;
-        let percents = (mv.max(VOLTS_MIN) - VOLTS_MIN) * 100 / (VOLTS_MAX - VOLTS_MIN);
-        return Ok(Some((mv, percents.clamp(0, 100) as Percent)))
+        return Ok(Some(mv))
     }
 
     pub fn start_measuring(&mut self) -> Rslt<()> {

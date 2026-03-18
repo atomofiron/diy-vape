@@ -229,12 +229,13 @@ impl Renderer for State {
             .into_styled(WHITE_STROKE);
         let battery = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)))
             .into_styled(WHITE_STROKE);
-        let (amount, x) = match self.battery.level {
+        let level = self.get_battery_level();
+        let (amount, x) = match level {
             None => (format!(3, "?"), 8),
             Some(100) => (format!(3, "00"), 6),
             Some(value) => (format!(3, "{value}"), 4),
         };
-        let one = if let Some(100) = self.battery.level { "|" } else { "" };
+        let one = if let Some(100) = level { "|" } else { "" };
         let one = Text::new(one, Point::new(1, 13), BATTERY_TEXT);
         let percents = Text::new(amount.as_str(), Point::new(x, 13), BATTERY_TEXT);
 

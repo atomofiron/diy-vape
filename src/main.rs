@@ -168,6 +168,9 @@ async fn bustle() -> ! {
             state.render_dirty(&mut display);
             if duty.is_none() {
                 update_battery(&mut state, &mut adc, &mut blue, now);
+                if state.battery.is_full() {
+                    state.update_max_mv();
+                }
             }
         } else if state.battery_status.is_powered() {
             was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
@@ -288,17 +291,17 @@ fn update_battery(
     blue: &mut PinOut<PushPull>,
     now: Time,
 ) {
-    let need_update = state.battery.level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
-    let info = match () {
+    let need_update = state.battery.idle.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
+    let mv = match () {
         _ if !state.is_progress_zero() => return,
         _ if adc.fetch_usb_connection() => return state.reset_battery_mv(),
         _ if !need_update => return,
-        _ => adc.get_mv_and_level(now)
+        _ => adc.measure(now)
             .soft_unwrap()
             .flat(),
     };
     blue.blink();
-    state.set_battery_mv(info);
+    state.set_battery_idle(mv);
 }
 
 fn update_charging(

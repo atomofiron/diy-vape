@@ -4,7 +4,7 @@ use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
 use crate::types::{Duty, MilliVolt, MilliWatt, Percent, Time};
-use crate::values::{BRIGHTNESS_RANGE, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND};
+use crate::values::{BRIGHTNESS_RANGE, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
 
 pub struct State {
     pub mode: Mode,
@@ -194,16 +194,15 @@ impl State {
     }
 
     pub fn reset_battery_mv(&mut self) {
-        if self.battery.idle.is_some() || self.battery.level.is_some() {
-            self.set_battery_mv(None);
-        }
+        self.set_battery_idle(None);
     }
 
-    pub fn set_battery_mv(&mut self, new: Option<(MilliVolt, Percent)>) {
-        self.battery.idle = new.map(|(mv, _)| mv);
-        self.battery.level = new.map(|(_, level)| level);
-        self.is_statusbar_dirty = true;
-        self.is_resistance_or_watts_dirty = true;
+    pub fn set_battery_idle(&mut self, mv: Option<MilliVolt>) {
+        if mv != self.battery.idle {
+            self.battery.idle = mv;
+            self.is_statusbar_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
+        }
     }
 
     pub fn watts(&self) -> Option<MilliWatt> {
@@ -223,6 +222,24 @@ impl State {
             self.buttons.0 = left;
             self.buttons.1 = right;
         }
+    }
+
+    pub fn update_max_mv(&mut self) {
+        let max = match self.battery.idle {
+            Some(idle) => idle,
+            None => return,
+        };
+        if max != self.config.battery_max {
+            self.config.battery_max = max;
+            self.is_statusbar_dirty = true;
+        }
+    }
+
+    pub fn get_battery_level(&mut self) -> Option<Percent> {
+        let max = self.config.battery_max;
+        let now = self.battery.idle?;
+        let percents = (now - VOLTS_MIN) * 100 / (max - VOLTS_MIN);
+        return Some(percents.clamp(0, 100) as Percent)
     }
 
     pub fn is_smth_dirty(&self) -> bool {

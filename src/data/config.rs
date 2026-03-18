@@ -1,7 +1,7 @@
 use crate::data::power::Power;
 use crate::flash::savable::Savable;
 use crate::types::{Brightness, DeciOhm, MilliVolt, MilliWatt, Second};
-use crate::values::{BRIGHTNESS_RANGE, BRIGHTNESS_RANGE_RAW};
+use crate::values::{BRIGHTNESS_RANGE, BRIGHTNESS_RANGE_RAW, VOLTS_MAX};
 use core::cmp::max;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ pub struct Config {
     pub limit: Second,
     pub resistance: DeciOhm,
     pub brightness: u8,
+    pub battery_max: MilliVolt,
 }
 
 impl Default for Config {
@@ -21,6 +22,7 @@ impl Default for Config {
             limit: 3,
             resistance: 12,
             brightness: 2,
+            battery_max: VOLTS_MAX,
         }
     }
 }
