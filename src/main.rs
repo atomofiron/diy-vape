@@ -222,7 +222,7 @@ fn calc_work_progress_and_duty(
     start: Option<Time>,
     duty: Option<Duty>,
 ) {
-    let rest_mv = match state.rest_mv {
+    let idle_mv = match state.battery.idle {
         None => return,
         Some(mv) => mv,
     };
@@ -257,7 +257,7 @@ fn calc_work_progress_and_duty(
             Ok(mv) => {
                 state.set_load_mv(mv);
                 let theoretical_max = state.config.milliwatts(VOLTS_MAX);
-                let theoretical = state.config.milliwatts(rest_mv);
+                let theoretical = state.config.milliwatts(idle_mv);
                 let current = state.config.milliwatts(mv);
                 let drawdown = (theoretical - current).max(0);
                 let percents = state.config.power.percents() as MilliWatt;
@@ -288,17 +288,17 @@ fn update_battery(
     blue: &mut PinOut<PushPull>,
     now: Time,
 ) {
-    let need_update = state.battery_level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
+    let need_update = state.battery.level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
     let info = match () {
         _ if !state.is_progress_zero() => return,
-        _ if adc.fetch_usb_connection() => return state.reset_battery_info(),
+        _ if adc.fetch_usb_connection() => return state.reset_battery_mv(),
         _ if !need_update => return,
         _ => adc.get_mv_and_level(now)
             .soft_unwrap()
             .flat(),
     };
     blue.blink();
-    state.set_battery_info(info);
+    state.set_battery_mv(info);
 }
 
 fn update_charging(

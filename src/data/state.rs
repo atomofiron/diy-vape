@@ -1,4 +1,5 @@
 use crate::core::charge_status::ChargeStatus;
+use crate::data::battery::Battery;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
@@ -9,14 +10,9 @@ pub struct State {
     pub mode: Mode,
     pub config: Config,
     pub stats: Stats,
+    pub battery: Battery,
 
     pub buttons: (bool, bool), // left, right
-
-    pub battery_status: ChargeStatus, // 4056H
-    pub battery_level: Option<Percent>,
-    pub rest_mv: Option<MilliVolt>,
-    pub load_mv: Option<MilliVolt>,
-
     pub is_display_on: bool,
 
     pub is_header_dirty: bool,
@@ -36,13 +32,9 @@ impl State {
             mode: Mode::default(),
             config,
             stats,
+            battery: Battery::default(),
 
             buttons: (false, false),
-
-            battery_status: ChargeStatus::default(),
-            battery_level: None,
-            rest_mv: None,
-            load_mv: None,
 
             is_display_on: true,
 
@@ -184,16 +176,16 @@ impl State {
     }
 
     pub fn set_load_mv(&mut self, mw: MilliVolt) {
-        if self.load_mv != Some(mw) {
-            self.load_mv = Some(mw);
+        if self.battery.load != Some(mw) {
+            self.battery.load = Some(mw);
             self.is_resistance_or_watts_dirty = true;
         }
     }
 
     pub fn set_charge_status(&mut self, charging: bool, full: bool) -> bool {
         let status = ChargeStatus::pick(charging, full);
-        if status != self.battery_status {
-            self.battery_status = status;
+        if status != self.battery.status {
+            self.battery.status = status;
             self.is_statusbar_dirty = true;
             true
         } else {
@@ -201,21 +193,21 @@ impl State {
         }
     }
 
-    pub fn reset_battery_info(&mut self) {
-        if self.rest_mv.is_some() || self.battery_level.is_some() {
-            self.set_battery_info(None);
+    pub fn reset_battery_mv(&mut self) {
+        if self.battery.idle.is_some() || self.battery.level.is_some() {
+            self.set_battery_mv(None);
         }
     }
 
-    pub fn set_battery_info(&mut self, new: Option<(MilliVolt, Percent)>) {
-        self.rest_mv = new.map(|(mv, _)| mv);
-        self.battery_level = new.map(|(_, level)| level);
+    pub fn set_battery_mv(&mut self, new: Option<(MilliVolt, Percent)>) {
+        self.battery.idle = new.map(|(mv, _)| mv);
+        self.battery.level = new.map(|(_, level)| level);
         self.is_statusbar_dirty = true;
         self.is_resistance_or_watts_dirty = true;
     }
 
     pub fn watts(&self) -> Option<u8> {
-        let mut mw = self.config.milliwatts(self.load_mv?);
+        let mut mw = self.config.milliwatts(self.battery.load?);
         let percents = self.config.power.percents() as MilliWatt;
         mw = mw * percents / 100;
         let mut watts = mw / MW;
