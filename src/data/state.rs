@@ -238,7 +238,7 @@ impl State {
     pub fn get_battery_level(&mut self) -> Option<Percent> {
         let max = self.config.battery_max;
         let now = self.battery.idle?;
-        let percents = (now - VOLTS_MIN) * 100 / (max - VOLTS_MIN);
+        let percents = (now - VOLTS_MIN) as u32 * 100 / (max - VOLTS_MIN) as u32;
         return Some(percents.clamp(0, 100) as Percent)
     }
 
