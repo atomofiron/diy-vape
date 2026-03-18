@@ -263,7 +263,7 @@ fn calc_work_progress_and_duty(
                 let percents = state.config.power.percents() as MilliWatt;
                 let mut target = (theoretical_max - drawdown) * percents / 100;
                 target = min(target, current);
-                let duty = (MAX_DUTY as MilliWatt * (target / 10) / (current / 10)) as Duty;
+                let duty = (MAX_DUTY as u32 * target / current as u32) as Duty;
                 state.set_work_duty(None, Some(duty * 0 + TEST_DUTY)); // todo duty
             }
         },

@@ -175,9 +175,9 @@ impl State {
         }
     }
 
-    pub fn set_load_mv(&mut self, mw: MilliVolt) {
-        if self.battery.load != Some(mw) {
-            self.battery.load = Some(mw);
+    pub fn set_load_mv(&mut self, mv: MilliVolt) {
+        if self.battery.load != Some(mv) {
+            self.battery.load = Some(mv);
             self.is_resistance_or_watts_dirty = true;
         }
     }
@@ -206,7 +206,7 @@ impl State {
         self.is_resistance_or_watts_dirty = true;
     }
 
-    pub fn watts(&self) -> Option<u8> {
+    pub fn watts(&self) -> Option<MilliWatt> {
         let mut mw = self.config.milliwatts(self.battery.load?);
         let percents = self.config.power.percents() as MilliWatt;
         mw = mw * percents / 100;
@@ -214,7 +214,7 @@ impl State {
         if (mw % MW) >= (MW / 2) {
             watts += 1;
         }
-        Some(watts as u8)
+        return Some(watts as MilliWatt)
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {

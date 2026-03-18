@@ -143,7 +143,7 @@ impl Renderer for State {
         let display_area = display.bounding_box();
         let is_resistance = matches!(self.mode, Mode::Resistance);
 
-        let resistance = format!(6, "{:.1}", self.config.resistance as f32 / 10.0);
+        let resistance = format!(4, "{}.{}", self.config.resistance / 10, self.config.resistance % 10);
         let resistance = Text::new(resistance.as_str(), Point::new(0, 14), if is_resistance { BLACK_TEXT } else { WHITE_TEXT });
         let watt = match self.watts() {
             Some(watt) => format!(4, "{}W", watt),

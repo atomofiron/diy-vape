@@ -32,9 +32,9 @@ impl Savable for Config {
 impl Config {
 
     pub fn milliwatts(&self, mv: MilliVolt) -> MilliWatt {
-        let mv = mv as MilliWatt;
-        let load = self.resistance as MilliWatt;
-        return mv.pow(2) / load / 100;
+        let mv = mv as u32;
+        let resistance = self.resistance as u32;
+        return mv.pow(2) / resistance / 100;
     }
 
     pub fn brightness(&self) -> Brightness {
