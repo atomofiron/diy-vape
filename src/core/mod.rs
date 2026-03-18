@@ -5,3 +5,4 @@ mod strings;
 pub mod adc;
 pub mod renderer;
 pub mod timer;
+pub mod charging;

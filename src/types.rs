@@ -1,3 +1,4 @@
+use crate::ext::error::ErrorMessage;
 use crate::flash::flash::AsyncFlash;
 use nrf52840_hal::gpio::{Input, Output, Pin};
 use nrf52840_hal::pac::TWIM0;
@@ -8,6 +9,7 @@ use ssd1306::mode::BufferedGraphicsMode;
 use ssd1306::prelude::{DisplaySize128x64, I2CInterface};
 use ssd1306::Ssd1306;
 
+pub type Rslt<T> = Result<T, ErrorMessage>;
 pub type Display = Ssd1306<I2CInterface<Twim<TWIM0>>, DisplaySize128x64, BufferedGraphicsMode<DisplaySize128x64>>;
 pub type Storage = MapStorage<u8, AsyncFlash, NoCache>;
 pub type PinIn<M> = Pin<Input<M>>;

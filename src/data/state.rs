@@ -11,8 +11,8 @@ pub struct State {
 
     pub buttons: (bool, bool), // left, right
 
-    pub usb_connected: bool, // nrf52840
     pub battery_charging: bool, // 4056H
+    pub battery_charging_stdby: bool, // todo remove
     pub battery_level: Option<Percent>,
     pub rest_mv: Option<MilliVolt>,
     pub load_mv: Option<MilliVolt>,
@@ -39,8 +39,8 @@ impl State {
 
             buttons: (false, false),
 
-            usb_connected: false,
             battery_charging: false,
+            battery_charging_stdby: false,
             battery_level: None,
             rest_mv: None,
             load_mv: None,
@@ -191,12 +191,11 @@ impl State {
         }
     }
 
-    pub fn set_usb_info(&mut self, connected: bool, charging: bool) {
-        if self.usb_connected != connected || self.battery_charging != charging {
-            self.usb_connected = connected;
+    pub fn set_charging_info(&mut self, charging: bool, stdby: bool) {
+        if charging != self.battery_charging || stdby != self.battery_charging_stdby {
             self.battery_charging = charging;
+            self.battery_charging_stdby = stdby;
             self.is_statusbar_dirty = true;
-            self.is_resistance_or_watts_dirty = true;
         }
     }
 

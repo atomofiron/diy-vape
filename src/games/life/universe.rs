@@ -24,6 +24,7 @@ impl Universe {
         }
     }
 
+    #[allow(unused)]
     pub fn sow_abundantly(&mut self, rng: &mut Rng) {
         // 50%
         let mut atom = rng.random_u64();

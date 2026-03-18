@@ -20,6 +20,7 @@ pub struct Adc {
     pub saadc: Saadc,
     pub power: POWER,
     pub last_check: u64,
+    pub usb_connected: bool, // nrf52840
 }
 
 impl Adc {
@@ -36,17 +37,20 @@ impl Adc {
             saadc: Saadc::new(raw_saadc, cfg),
             power,
             last_check: 0,
+            usb_connected: false,
         }
     }
 
-    pub fn is_usb_connected(&self) -> bool {
-        self.power.usbregstatus.read()
+    pub fn update_usb_connection(&mut self) -> bool {
+        let connected = self.power.usbregstatus.read()
             .vbusdetect()
-            .bit_is_set()
+            .bit_is_set();
+        self.usb_connected = connected;
+        return connected
     }
 
     pub fn get_mv_and_level(&mut self, now: Time) -> Option<(MilliVolt, Percent)> {
-        if self.is_usb_connected() {
+        if self.update_usb_connection() {
             return None;
         }
         self.last_check = now;

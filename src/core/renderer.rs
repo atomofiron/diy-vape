@@ -219,6 +219,7 @@ impl Renderer for State {
             .ignore();
 
         let charging = ICON_CHARGING.into_styled(if self.battery_charging { WHITE_STROKE } else { BLACK_STROKE });
+        let charging_stdby = ICON_CHARGING.into_styled(if self.battery_charging_stdby { WHITE_STROKE } else { BLACK_STROKE });
         let cathode = Line::new(Point::new(0, 0), Point::new(0, 4))
             .into_styled(WHITE_STROKE);
         let battery = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)))
@@ -233,6 +234,7 @@ impl Renderer for State {
         let percents = Text::new(amount.as_str(), Point::new(x, 13), BATTERY_TEXT);
 
         let chain = Chain::new(charging)
+            .append(charging_stdby)
             .append(space(3))
             .append(cathode)
             .append(Chain::new(one).append(percents).append(battery));

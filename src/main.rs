@@ -16,6 +16,7 @@ use ssd1306::command::AddrMode;
 use ssd1306::prelude::*;
 use ssd1306::{I2CDisplayInterface, Ssd1306};
 use vape::core::adc::Adc;
+use vape::core::charging::Charging;
 use vape::core::renderer::Renderer;
 use vape::core::timer::Timer;
 use vape::data::config::Config;
@@ -50,12 +51,15 @@ async fn bustle() -> ! {
     let peripherals = Peripherals::take()
         .unwrap();
 
+    /*peripherals.POWER.dcdcen.write(|w| w.dcdcen().disabled());
+    peripherals.POWER.vbusdetect.write(|w| w.vbusdetect().disabled());*/
+
     let port0 = Parts0::new(peripherals.P0);
     let port1 = Parts1::new(peripherals.P1);
 
-    let mut touch = port1.p1_12.into_floating_input().degrade();
-    let mut left_btn = port0.p0_03.into_pullup_input().degrade();
-    let mut right_btn = port0.p0_28.into_pullup_input().degrade();
+    let mut touch = port1.p1_13.into_floating_input().degrade();
+    let mut left_btn = port1.p1_11.into_pullup_input().degrade();
+    let mut right_btn = port1.p1_12.into_pullup_input().degrade();
 
     let mut red = port0.p0_26.into_push_pull_output(Level::High).degrade();
     let mut green = port0.p0_30.into_push_pull_output(Level::High).degrade();
@@ -63,9 +67,9 @@ async fn bustle() -> ! {
 
     blue.blink();
 
-    let pin_02 = port0.p0_02.into_push_pull_output(Level::Low).degrade();
+    let load = port1.p1_15.into_push_pull_output(Level::Low).degrade();
     let pwm = Pwm::new(peripherals.PWM0);
-    pwm.set_output_pin(Channel::C0, pin_02);
+    pwm.set_output_pin(Channel::C0, load);
     pwm.set_prescaler(Prescaler::Div1);
     pwm.set_max_duty(MAX_DUTY);
     pwm.enable();
@@ -73,6 +77,10 @@ async fn bustle() -> ! {
     let mut timer = Timer::init(peripherals.RTC1, peripherals.CLOCK)
         .unwrap();
 
+    let mut charging = Charging::new(
+        port0.p0_02.into_pullup_input().degrade(),
+        port0.p0_03.into_pullup_input().degrade(),
+    );
     let scl = port0.p0_05.into_floating_input()
         .degrade();
     let sda = port0.p0_04.into_floating_input()
@@ -128,9 +136,10 @@ async fn bustle() -> ! {
         } else if was_touched && !touched {
             green.off()
         }
-        let interaction = was_touched != touched
-            || state.buttons != (left_pressed, right_pressed)
-            || state.battery_charging != (is_charging() || adc.is_usb_connected()); // todo remove '|| connected'
+        let mut interaction = was_touched != touched;
+        interaction = interaction || state.buttons != (left_pressed, right_pressed);
+        interaction = state.battery_charging != update_charging(&mut state, &mut charging) || interaction;
+        interaction = adc.usb_connected != adc.update_usb_connection() || interaction;
         was_touched = touched;
         let mut now = timer.now();
         if interaction {
@@ -155,16 +164,18 @@ async fn bustle() -> ! {
             display.set_brightness(brightness)
                 .ignore();
         }
-        if touched || left_pressed || right_pressed || (now - last_interaction) < SCREENSAVER_TIMEOUT {
+        if touched || left_pressed || right_pressed || duty.is_some() || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render_dirty(&mut display);
             if duty.is_none() {
-                update_battery(&mut adc, &mut state, &mut blue, now);
+                update_battery(&mut state, &mut adc, &mut blue, now);
             }
-        } else if state.battery_charging {
-            was_touched = screen_saver(&mut display, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
+        } else if !state.battery_charging {
+            was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
             last_interaction = now;
             state.mark_all_dirty();
+            update_battery(&mut state, &mut adc, &mut blue, now);
+            state.render_dirty(&mut display);
         } else {
             set_display(&mut state, &mut display, false);
         }
@@ -180,8 +191,8 @@ fn handle_pressed(
     right_pressed: bool,
     now: Time,
 ) {
-    match state.mode.clone() {
-        Mode::Work { .. } if adc.is_usb_connected() => (),
+    match state.mode {
+        Mode::Work { duty, .. } if duty.is_none() && adc.update_usb_connection() => (),
         Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
         _ if state.buttons == (left_pressed, right_pressed) => (),
         _ if state.buttons.0 || state.buttons.1 => (),
@@ -227,6 +238,9 @@ fn calc_work_progress_and_duty(
     match start {
         _ if cool_down || duration == 0 && !left_pressed && !right_pressed => state.set_work_duty(None, None),
         None if duty.is_some() => (), // duty is measured
+        _ if !left_pressed || !right_pressed => if start.is_some() {
+            state.set_work_duty(None, duty);
+        },
         None => {
             adc.start_measuring();
             state.set_work_duty(Some(now), Some(TEST_DUTY)); // todo MAX_DUTY
@@ -266,18 +280,15 @@ fn set_display(
 }
 
 fn update_battery(
-    adc: &mut Adc,
     state: &mut State,
+    adc: &mut Adc,
     blue: &mut PinOut<PushPull>,
     now: Time,
 ) {
-    let connected = adc.is_usb_connected();
-    let is_charging = is_charging() || connected; // todo remove '|| connected'
-    state.set_usb_info(connected, is_charging);
     let need_update = state.battery_level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
     let info = match () {
         _ if !state.is_progress_zero() => return,
-        _ if connected => return state.reset_battery_info(),
+        _ if adc.update_usb_connection() => return state.reset_battery_info(),
         _ if !need_update => return,
         _ => adc.get_mv_and_level(now),
     };
@@ -285,12 +296,22 @@ fn update_battery(
     state.set_battery_info(info);
 }
 
-fn is_charging() -> bool {
-    false // todo check charging leds
+fn update_charging(
+    state: &mut State,
+    charging: &mut Charging,
+) -> bool {
+    let is_charging = charging.is_charging()
+        .soft_unwrap_or(false);
+    let is_stdby = charging.is_stdby()
+        .soft_unwrap_or(false);
+    state.set_charging_info(is_charging, is_stdby);
+    return is_charging
 }
 
 fn screen_saver(
+    state: &mut State,
     display: &mut Display,
+    charging: &mut Charging,
     rng: &mut Rng,
     adc: &mut Adc,
     touch: &mut PinIn<Floating>,
@@ -318,8 +339,8 @@ fn screen_saver(
             _ if touch.is_high().unwrap_or(false) => touched = true,
             _ if left_btn.is_low().unwrap_or(false) => (),
             _ if right_btn.is_low().unwrap_or(false) => (),
-            // todo remove '&& !connected'
-            _ if !is_charging() && !adc.is_usb_connected() => (),
+            _ if state.battery_charging != update_charging(state, charging) => (),
+            _ if adc.usb_connected != adc.update_usb_connection() => (),
             _ => check_counter = check_counter_max,
         }
     }
