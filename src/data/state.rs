@@ -1,3 +1,4 @@
+use crate::core::charge_status::ChargeStatus;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
@@ -11,8 +12,7 @@ pub struct State {
 
     pub buttons: (bool, bool), // left, right
 
-    pub battery_charging: bool, // 4056H
-    pub battery_charging_stdby: bool, // todo remove
+    pub battery_status: ChargeStatus, // 4056H
     pub battery_level: Option<Percent>,
     pub rest_mv: Option<MilliVolt>,
     pub load_mv: Option<MilliVolt>,
@@ -39,8 +39,7 @@ impl State {
 
             buttons: (false, false),
 
-            battery_charging: false,
-            battery_charging_stdby: false,
+            battery_status: ChargeStatus::default(),
             battery_level: None,
             rest_mv: None,
             load_mv: None,
@@ -191,11 +190,14 @@ impl State {
         }
     }
 
-    pub fn set_charging_info(&mut self, charging: bool, stdby: bool) {
-        if charging != self.battery_charging || stdby != self.battery_charging_stdby {
-            self.battery_charging = charging;
-            self.battery_charging_stdby = stdby;
+    pub fn set_charge_status(&mut self, charging: bool, full: bool) -> bool {
+        let status = ChargeStatus::pick(charging, full);
+        if status != self.battery_status {
+            self.battery_status = status;
             self.is_statusbar_dirty = true;
+            true
+        } else {
+            false
         }
     }
 

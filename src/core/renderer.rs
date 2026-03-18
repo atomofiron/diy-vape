@@ -1,5 +1,6 @@
+use crate::core::charge_status::ChargeStatus;
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_STROKE, BLACK_TEXT, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, ICON_CHARGING, ICON_CROSS, ICON_OHM, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, ICON_CHARGED, ICON_CHARGING, ICON_CROSS, ICON_EMPTY, ICON_OHM, ICON_WARNING, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::strings::{BRIGHTNESS, HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
@@ -218,8 +219,12 @@ impl Renderer for State {
             .draw(display)
             .ignore();
 
-        let charging = ICON_CHARGING.into_styled(if self.battery_charging { WHITE_STROKE } else { BLACK_STROKE });
-        let charging_stdby = ICON_CHARGING.into_styled(if self.battery_charging_stdby { WHITE_STROKE } else { BLACK_STROKE });
+        let status = match self.battery_status {
+            ChargeStatus::Discharging => ICON_EMPTY,
+            ChargeStatus::Charging => ICON_CHARGING,
+            ChargeStatus::Full => ICON_CHARGED,
+            ChargeStatus::Unknown => ICON_WARNING,
+        }.into_styled(WHITE_STROKE);
         let cathode = Line::new(Point::new(0, 0), Point::new(0, 4))
             .into_styled(WHITE_STROKE);
         let battery = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)))
@@ -233,8 +238,7 @@ impl Renderer for State {
         let one = Text::new(one, Point::new(1, 13), BATTERY_TEXT);
         let percents = Text::new(amount.as_str(), Point::new(x, 13), BATTERY_TEXT);
 
-        let chain = Chain::new(charging)
-            .append(charging_stdby)
+        let chain = Chain::new(status)
             .append(space(3))
             .append(cathode)
             .append(Chain::new(one).append(percents).append(battery));

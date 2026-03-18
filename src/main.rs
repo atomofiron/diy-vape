@@ -78,8 +78,8 @@ async fn bustle() -> ! {
         .unwrap();
 
     let mut charging = Charging::new(
-        port0.p0_02.into_pullup_input().degrade(),
-        port0.p0_03.into_pullup_input().degrade(),
+        port0.p0_02.into_floating_input().degrade(),
+        port0.p0_03.into_floating_input().degrade(),
     );
     let scl = port0.p0_05.into_floating_input()
         .degrade();
@@ -138,8 +138,8 @@ async fn bustle() -> ! {
         }
         let mut interaction = was_touched != touched;
         interaction = interaction || state.buttons != (left_pressed, right_pressed);
-        interaction = state.battery_charging != update_charging(&mut state, &mut charging) || interaction;
-        interaction = adc.usb_connected != adc.update_usb_connection() || interaction;
+        interaction = update_charging(&mut state, &mut charging) || interaction;
+        interaction = adc.update_usb_connection() || interaction;
         was_touched = touched;
         let mut now = timer.now();
         if interaction {
@@ -169,7 +169,7 @@ async fn bustle() -> ! {
             if duty.is_none() {
                 update_battery(&mut state, &mut adc, &mut blue, now);
             }
-        } else if !state.battery_charging {
+        } else if state.battery_status.is_powered() {
             was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
             last_interaction = now;
@@ -192,7 +192,7 @@ fn handle_pressed(
     now: Time,
 ) {
     match state.mode {
-        Mode::Work { duty, .. } if duty.is_none() && adc.update_usb_connection() => (),
+        Mode::Work { duty, .. } if duty.is_none() && adc.fetch_usb_connection() => (),
         Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
         _ if state.buttons == (left_pressed, right_pressed) => (),
         _ if state.buttons.0 || state.buttons.1 => (),
@@ -239,19 +239,22 @@ fn calc_work_progress_and_duty(
         _ if cool_down || duration == 0 && !left_pressed && !right_pressed => state.set_work_duty(None, None),
         None if duty.is_some() => (), // duty is measured
         _ if !left_pressed || !right_pressed => if start.is_some() {
+            adc.stop_measuring()
+                .soft_unwrap();
             state.set_work_duty(None, duty);
         },
         None => {
-            adc.start_measuring();
+            adc.start_measuring()
+                .soft_unwrap();
             state.set_work_duty(Some(now), Some(TEST_DUTY)); // todo MAX_DUTY
         }
         Some(start) if now - start < 100 => (), // measuring
         Some(_) => match adc.finish_measuring() {
-            None => {
+            Err(_) => {
                 state.set_work_duration(duration, now, true);
                 state.set_work_duty(None, None);
             },
-            Some(mv) => {
+            Ok(mv) => {
                 state.set_load_mv(mv);
                 let theoretical_max = state.config.milliwatts(VOLTS_MAX);
                 let theoretical = state.config.milliwatts(rest_mv);
@@ -288,9 +291,11 @@ fn update_battery(
     let need_update = state.battery_level.is_none() || adc.last_check == 0 || (now - adc.last_check) > BATTERY_PERIOD;
     let info = match () {
         _ if !state.is_progress_zero() => return,
-        _ if adc.update_usb_connection() => return state.reset_battery_info(),
+        _ if adc.fetch_usb_connection() => return state.reset_battery_info(),
         _ if !need_update => return,
-        _ => adc.get_mv_and_level(now),
+        _ => adc.get_mv_and_level(now)
+            .soft_unwrap()
+            .flat(),
     };
     blue.blink();
     state.set_battery_info(info);
@@ -302,10 +307,9 @@ fn update_charging(
 ) -> bool {
     let is_charging = charging.is_charging()
         .soft_unwrap_or(false);
-    let is_stdby = charging.is_stdby()
+    let is_full = charging.is_full()
         .soft_unwrap_or(false);
-    state.set_charging_info(is_charging, is_stdby);
-    return is_charging
+    return state.set_charge_status(is_charging, is_full)
 }
 
 fn screen_saver(
@@ -339,8 +343,8 @@ fn screen_saver(
             _ if touch.is_high().unwrap_or(false) => touched = true,
             _ if left_btn.is_low().unwrap_or(false) => (),
             _ if right_btn.is_low().unwrap_or(false) => (),
-            _ if state.battery_charging != update_charging(state, charging) => (),
-            _ if adc.usb_connected != adc.update_usb_connection() => (),
+            _ if update_charging(state, charging) => (),
+            _ if adc.update_usb_connection() => (),
             _ => check_counter = check_counter_max,
         }
     }

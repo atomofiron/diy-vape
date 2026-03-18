@@ -22,7 +22,6 @@ pub const BLACK_BOLD_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14_BOLD, Binar
 pub const WHITE_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::On);
 pub const BLACK_FILL: FigureStyle = PrimitiveStyle::with_fill(BinaryColor::Off);
 pub const WHITE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-pub const BLACK_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::Off, 1);
 const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::Off, 0);
 
 pub const BATTERY_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
@@ -40,9 +39,20 @@ pub const ICON_CROSS: StyledPolyline = Styled::new(Polyline::new(&CROSS_POINTS),
 const OHM_POINTS: [Point; 12] = [Point::new(0, 9), Point::new(2, 9), Point::new(2, 7), Point::new(0, 5), Point::new(0, 3), Point::new(3, 0), Point::new(5, 0), Point::new(8, 3), Point::new(8, 5), Point::new(6, 7), Point::new(6, 9), Point::new(8, 9)];
 pub const ICON_OHM: StyledPolyline = Styled::new(Polyline::new(&OHM_POINTS), WHITE_STROKE);
 
-// ⚡
-const LIGHTNING_POINTS: [Point; 7] = [Point::new(3, 0), Point::new(0, 7), Point::new(5, 4), Point::new(2, 11), Point::new(2, 4), Point::new(3, 7), Point::new(3, 0)];
-pub const ICON_CHARGING: Polyline = Polyline::new(&LIGHTNING_POINTS);
+// ⚡ (fill)
+const CHARGING_POINTS: [Point; 7] = [Point::new(3, 0), Point::new(0, 7), Point::new(5, 4), Point::new(2, 11), Point::new(2, 4), Point::new(3, 7), Point::new(3, 0)];
+pub const ICON_CHARGING: Polyline = Polyline::new(&CHARGING_POINTS);
+
+// ⚡ (stroke)
+const CHARGED_POINTS: [Point; 6] = [Point::new(3, 0), Point::new(0, 7), Point::new(2, 5), Point::new(3, 5), Point::new(5, 3), Point::new(2, 11)];
+pub const ICON_CHARGED: Polyline = Polyline::new(&CHARGED_POINTS);
+
+// !
+const WARNING_POINTS: [Point; 6] = [Point::new(2, 6), Point::new(2, 0), Point::new(3, 0), Point::new(3, 11), Point::new(2, 11), Point::new(2, 9)];
+pub const ICON_WARNING: Polyline = Polyline::new(&WARNING_POINTS);
+
+// empty
+pub const ICON_EMPTY: Polyline = Polyline::new(&[]);
 
 pub fn space(size: u32) -> StyledLine {
     Line::new(Point::new(0, 0), Point::new(size as i32 - 1, 0))

@@ -1,5 +1,5 @@
-use crate::types::{MilliVolt, Percent, Time};
-use crate::util::logging::SoftUnwrap;
+use crate::ext::error::ErrorMessage;
+use crate::types::{MilliVolt, Percent, Rslt, Time};
 use crate::values::{VOLTS_MAX, VOLTS_MIN};
 use cortex_m::asm::delay;
 use embedded_hal::digital::OutputPin;
@@ -20,6 +20,7 @@ pub struct Adc {
     pub saadc: Saadc,
     pub power: POWER,
     pub last_check: u64,
+    pub measuring: bool,
     pub usb_connected: bool, // nrf52840
 }
 
@@ -37,49 +38,57 @@ impl Adc {
             saadc: Saadc::new(raw_saadc, cfg),
             power,
             last_check: 0,
+            measuring: false,
             usb_connected: false,
         }
     }
 
-    pub fn update_usb_connection(&mut self) -> bool {
-        let connected = self.power.usbregstatus.read()
+    pub fn fetch_usb_connection(&mut self) -> bool {
+        self.usb_connected = self.power.usbregstatus.read()
             .vbusdetect()
             .bit_is_set();
-        self.usb_connected = connected;
-        return connected
+        return self.usb_connected
     }
 
-    pub fn get_mv_and_level(&mut self, now: Time) -> Option<(MilliVolt, Percent)> {
-        if self.update_usb_connection() {
-            return None;
+    pub fn update_usb_connection(&mut self) -> bool {
+        self.usb_connected != self.fetch_usb_connection()
+    }
+
+    pub fn get_mv_and_level(&mut self, now: Time) -> Rslt<Option<(MilliVolt, Percent)>> {
+        if self.fetch_usb_connection() {
+            return Ok(None); // it isn't an error
         }
         self.last_check = now;
         Self::calibrate();
-        if !self.start_measuring() {
-            return None;
-        }
+        self.start_measuring()?;
         delay(1_000_000);
         let mv = self.finish_measuring()?;
         let percents = (mv.max(VOLTS_MIN) - VOLTS_MIN) * 100 / (VOLTS_MAX - VOLTS_MIN);
-        return Some((mv, percents.clamp(0, 100) as Percent))
+        return Ok(Some((mv, percents.clamp(0, 100) as Percent)))
     }
 
-    pub fn start_measuring(&mut self) -> bool {
+    pub fn start_measuring(&mut self) -> Rslt<()> {
+        self.measuring = true;
         self.vbat_en.set_low()
-            .soft_unwrap().is_some()
+            .map_err(|_| ErrorMessage("start adc measuring failed"))
     }
 
-    pub fn finish_measuring(&mut self) -> Option<MilliVolt> {
+    pub fn stop_measuring(&mut self) -> Rslt<()> {
+        self.measuring = false;
+        self.vbat_en.set_high()
+            .map_err(|_| ErrorMessage("stop adc measuring failed"))
+    }
+
+    pub fn finish_measuring(&mut self) -> Rslt<MilliVolt> {
         let mut arr = [0u32; 8];
         arr.iter_mut()
             .for_each(|v| *v = self.read_mv() as u32);
-        self.vbat_en.set_high()
-            .soft_unwrap();
+        self.stop_measuring()?;
         let avg = arr.iter().sum::<u32>() / arr.len() as u32;
-        return Some(avg as MilliVolt);
+        return Ok(avg as MilliVolt);
     }
 
-    pub fn read_mv(&mut self) -> MilliVolt {
+    fn read_mv(&mut self) -> MilliVolt {
         let raw = self.saadc.read_channel(&mut self.vbat_pin)
             .unwrap_or(0)
             .max(0);
