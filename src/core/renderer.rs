@@ -2,6 +2,7 @@ use crate::core::charge_status::ChargeStatus;
 use crate::core::cleaner::Cleaner;
 use crate::core::graphics::{space, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, ICON_CHARGED, ICON_CHARGING, ICON_CROSS, ICON_EMPTY, ICON_OHM, ICON_WARNING, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
+use crate::core::icons::{BRIGHTNESS_ICON_SIZE, MOON_FILL, MOON_STROKE, SUN_FILL, SUN_STROKE};
 use crate::core::strings::{BRIGHTNESS, HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
 use crate::data::mode::Mode;
 use crate::data::power::Power;
@@ -10,9 +11,10 @@ use crate::ext::result_ext::ResultExt;
 use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::types::{Display, Progress, Time};
-use crate::values::{HEADER_OFFSET, HEADER_WIDTH, PROGRESS_MAX, PROGRESS_STEP, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::values::{HEADER_WIDTH, PROGRESS_MAX, PROGRESS_STEP, SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::{format, kopy};
 use core::cmp::min;
+use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, CornerRadii, Line, Rectangle, RoundedRectangle};
 use embedded_graphics::text::Text;
@@ -175,20 +177,34 @@ impl Renderer for State {
 
     fn draw_brightness(&mut self, display: &mut Display) {
         display.clear_footer();
-        let step = HEADER_WIDTH / 9 * 2;
-        let offset = HEADER_OFFSET + (HEADER_WIDTH - step * 9 / 2) as i32 / 2;
-        let y = (SCREEN_HEIGHT - AREA / 2) as i32;
+
+        let icon_y = (SCREEN_HEIGHT - BRIGHTNESS_ICON_SIZE) as i32;
+        let icon_x = 2;
+        let moon = if self.mode == Mode::Brightness { MOON_FILL } else { MOON_STROKE };
+        Image::new(&moon, Point::new(icon_x, icon_y))
+            .draw(display).ignore();
+        let sun = if self.mode == Mode::Brightness { SUN_FILL } else { SUN_STROKE };
+        let icon_x = (SCREEN_WIDTH - BRIGHTNESS_ICON_SIZE) as i32 - icon_x;
+        Image::new(&sun, Point::new(icon_x, icon_y))
+            .draw(display).ignore();
+
+        let dashes = 5;
+        let width = 9;
+        let step = width * 2;
+        let offset = (SCREEN_WIDTH as i32 - width * (dashes * 2 - 1)) / 2;
+        let y = (SCREEN_HEIGHT - BRIGHTNESS_ICON_SIZE / 2) as i32;
         let brightness = self.config.brightness as i32;
         let focused = self.mode == Mode::Brightness;
-        for i in 0..5 {
-            let x = offset + i * step as i32;
+        for i in 0..dashes {
+            let x = offset + i * step;
             let on = i <= brightness;
+            let width = width as u32;
             match on || focused {
-                true => RoundedRectangle::new(Rectangle::new(Point::new(x, y), Size::new(step / 2, 4)), CornerRadii::new(Size::new(2, 2)))
+                true => RoundedRectangle::new(Rectangle::new(Point::new(x, y - 3), Size::new(width, 6)), CornerRadii::new(Size::new(2, 2)))
                     .into_styled(if on && focused { WHITE_FILL } else { WHITE_STROKE })
                     .draw(display)
                     .ignore(),
-                false => Rectangle::new(Point::new(x + 1, y + 1), Size::new(step / 2 - 2, 2))
+                false => Rectangle::new(Point::new(x, y - 1), Size::new(width, 2))
                     .into_styled(WHITE_STROKE)
                     .draw(display)
                     .ignore(),

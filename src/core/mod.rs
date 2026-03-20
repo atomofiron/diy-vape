@@ -1,5 +1,6 @@
 mod cleaner;
 mod graphics;
+mod icons;
 mod strings;
 
 pub mod adc;
