@@ -3,7 +3,7 @@ use crate::types::DeciSecond;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
+#[derive(Serialize, Deserialize, MaxSize, Clone, Debug, PartialEq)]
 pub struct Stats {
     pub total: DeciSecond,
     pub count: u32,

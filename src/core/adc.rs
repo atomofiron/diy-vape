@@ -18,7 +18,7 @@ pub struct Adc {
     pub vbat_pin: Pin0_31,
     pub saadc: Saadc,
     pub power: POWER,
-    pub last_check: u64,
+    pub last_check: u64, // measuring == (Mode::Work::start == Some)
     pub measuring: bool,
     pub usb_connected: bool, // nrf52840
 }
@@ -66,15 +66,23 @@ impl Adc {
     }
 
     pub fn start_measuring(&mut self) -> Rslt<()> {
-        self.measuring = true;
-        self.vbat_en.set_low()
-            .map_err(|_| ErrorMessage("start adc measuring failed"))
+        if !self.measuring {
+            self.measuring = true;
+            self.vbat_en.set_low()
+                .map_err(|_| ErrorMessage("start adc measuring failed"))
+        } else {
+            Ok(())
+        }
     }
 
     pub fn stop_measuring(&mut self) -> Rslt<()> {
-        self.measuring = false;
-        self.vbat_en.set_high()
-            .map_err(|_| ErrorMessage("stop adc measuring failed"))
+        if self.measuring {
+            self.measuring = false;
+            self.vbat_en.set_high()
+                .map_err(|_| ErrorMessage("stop adc measuring failed"))
+        } else {
+            Ok(())
+        }
     }
 
     pub fn finish_measuring(&mut self) -> Rslt<MilliVolt> {

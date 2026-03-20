@@ -2,7 +2,7 @@ use crate::types::Percent;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
+#[derive(Serialize, Deserialize, MaxSize, Clone, Debug, PartialEq)]
 pub enum Power {
     Rare,
     Medium,

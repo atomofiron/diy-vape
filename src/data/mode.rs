@@ -6,8 +6,8 @@ pub enum Mode {
         duration: Time,
         prev: Time,
         cool_down: bool,
-        start: Option<Time>,
-        duty: Option<Duty>,
+        start: Option<Time>, // (start == Some) == Adc.measuring
+        duty: Option<Duty>, // (duty == Some) != (start == Some)
     },
     Power,
     Limit,

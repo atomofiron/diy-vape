@@ -6,7 +6,7 @@ use core::cmp::max;
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, MaxSize, Clone, Debug)]
+#[derive(Serialize, Deserialize, MaxSize, Clone, Debug, PartialEq)]
 pub struct Config {
     pub power: Power,
     pub limit: Second,

@@ -99,14 +99,14 @@ async fn bustle() -> ! {
     let flash = AsyncFlash::from(peripherals.NVMC);
     let mut storage = flash.storage();
 
-    let mut buf = [0u8; Config::FLASH_BUFFER_SIZE];
-    let config =storage.read::<Config>(&mut buf)
+    let mut config_buf = [0u8; Config::FLASH_BUFFER_SIZE];
+    let mut config =storage.read::<Config>(&mut config_buf)
         .await.soft_unwrap()
         .flat()
         .unwrap_or_default();
 
-    let mut buf = [0u8; Stats::FLASH_BUFFER_SIZE];
-    let stats = storage.read::<Stats>(&mut buf)
+    let mut stats_buf = [0u8; Stats::FLASH_BUFFER_SIZE];
+    let mut stats = storage.read::<Stats>(&mut stats_buf)
         .await.soft_unwrap()
         .flat()
         .unwrap_or_default();
@@ -118,7 +118,7 @@ async fn bustle() -> ! {
         peripherals.POWER,
     );
     let mut rng = Rng::new(peripherals.RNG);
-    let mut state = State::with(config, stats);
+    let mut state = State::with(config.clone(), stats.clone());
 
     green.blink();
 
@@ -181,6 +181,16 @@ async fn bustle() -> ! {
             state.render_dirty(&mut display);
         } else {
             set_display(&mut state, &mut display, false);
+        }
+        if state.config != config {
+            config = state.config.clone();
+            /* todo storage.save(&mut config_buf, config.clone())
+                .await.soft_unwrap();*/
+        }
+        if state.stats != stats {
+            stats = state.stats.clone();
+            /* todo storage.save(&mut stats_buf, stats.clone())
+                .await.soft_unwrap();*/
         }
         timer.sleep_ms(IDLE_PERIOD as u32)
             .unwrap_or_else(|_| red.blink());
