@@ -19,8 +19,11 @@ use vape::core::adc::Adc;
 use vape::core::charging::Charging;
 use vape::core::renderer::Renderer;
 use vape::core::timer::Timer;
+use vape::data::action::Action;
+use vape::data::button::Button;
 use vape::data::config::Config;
 use vape::data::mode::Mode;
+use vape::data::power::Power;
 use vape::data::state::State;
 use vape::data::stats::Stats;
 use vape::ext::led_ext::LedExt;
@@ -33,7 +36,7 @@ use vape::games::life::life::draw_life;
 use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD, VOLTS_MAX};
+use vape::values::{BATTERY_PERIOD, BRIGHTNESS_RANGE, DISPLAY_PRECHARGE, IDLE_PERIOD, LIMIT_RANGE, RESISTANCE_RANGE, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -173,6 +176,7 @@ async fn bustle() -> ! {
                 }
             }
         } else if state.battery_status.is_powered() {
+            state.reset_mode();
             was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
             last_interaction = now;
@@ -180,6 +184,7 @@ async fn bustle() -> ! {
             update_battery(&mut state, &mut adc, &mut blue, now);
             state.render_dirty(&mut display);
         } else {
+            state.reset_mode();
             set_display(&mut state, &mut display, false);
         }
         if state.config != config {
@@ -204,6 +209,15 @@ fn handle_pressed(
     right_pressed: bool,
     now: Time,
 ) {
+    if !state.is_work() && (state.buttons.0 ^ state.buttons.1) && left_pressed && right_pressed {
+        revert_last(state);
+        state.reset_mode();
+    }
+    if state.buttons == (false, false) && (left_pressed ^ right_pressed) {
+        state.last = last_action(state, Button::from(left_pressed, right_pressed));
+    } else if left_pressed == right_pressed {
+        state.last = None
+    }
     match state.mode {
         Mode::Work { duty, .. } if duty.is_none() && adc.fetch_usb_connection() => (),
         Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
@@ -221,6 +235,59 @@ fn handle_pressed(
         _ => (),
     }
     state.set_pressed(left_pressed, right_pressed);
+}
+
+fn last_action(state: &mut State, button: Option<Button>) -> Option<Action> {
+    let button = button?;
+    return match state.mode {
+        Mode::Work { .. } => None,
+        Mode::Power => match state.config.power {
+            Power::Rare if button.is_left() => None,
+            Power::Hard if button.is_right() => None,
+            _ => Some(Action::Power(button)),
+        },
+        Mode::Limit => match state.config.limit {
+            v if v == LIMIT_RANGE.start && button.is_left() => None,
+            v if v == LIMIT_RANGE.end && button.is_right() => None,
+            _ => Some(Action::Limit(button)),
+        },
+        Mode::Resistance => match state.config.resistance {
+            v if v == RESISTANCE_RANGE.start && button.is_left() => None,
+            v if v == RESISTANCE_RANGE.end && button.is_right() => None,
+            _ => Some(Action::Resistance(button)),
+        },
+        Mode::Brightness => match state.config.brightness {
+            v if v == BRIGHTNESS_RANGE.start && button.is_left() => None,
+            v if v == BRIGHTNESS_RANGE.end && button.is_right() => None,
+            _ => Some(Action::Brightness(button)),
+        },
+    }
+}
+
+fn revert_last(state: &mut State) {
+    let last = match &state.last {
+        Some(last) => last,
+        None => return,
+    };
+    match last {
+        Action::Power(btn) => match btn {
+            Button::Left => state.inc_power(),
+            Button::Right => state.dec_power(),
+        },
+        Action::Limit(btn) => match btn {
+            Button::Left => state.inc_limit(),
+            Button::Right => state.dec_limit(),
+        },
+        Action::Resistance(btn) => match btn {
+            Button::Left => state.inc_resistance(),
+            Button::Right => state.dec_resistance(),
+        },
+        Action::Brightness(btn) => match btn {
+            Button::Left => state.inc_brightness(),
+            Button::Right => state.dec_brightness(),
+        },
+    }
+    state.last = None;
 }
 
 fn calc_work_progress_and_duty(

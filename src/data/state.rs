@@ -1,4 +1,5 @@
 use crate::core::charge_status::ChargeStatus;
+use crate::data::action::Action;
 use crate::data::battery::Battery;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
@@ -14,6 +15,7 @@ pub struct State {
 
     pub buttons: (bool, bool), // left, right
     pub is_display_on: bool,
+    pub last: Option<Action>,
 
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
@@ -35,8 +37,8 @@ impl State {
             battery: Battery::default(),
 
             buttons: (false, false),
-
             is_display_on: true,
+            last: None,
 
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
@@ -71,9 +73,17 @@ impl State {
     }
 
     pub fn next_mode(&mut self) {
+        self.set_mode(self.mode.next());
+    }
+
+    pub fn reset_mode(&mut self) {
+        self.set_mode(Mode::default());
+    }
+
+    pub fn set_mode(&mut self, mode: Mode) {
         self.is_header_dirty = true;
         self.mark_current_dirty();
-        self.mode = self.mode.next();
+        self.mode = mode;
         self.mark_current_dirty();
     }
 
