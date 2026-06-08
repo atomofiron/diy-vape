@@ -130,23 +130,32 @@ impl State {
     }
 
     pub fn inc_power(&mut self) {
-        self.config.power = self.config.power.inc();
-        self.is_power_or_limit_dirty = true;
-        self.is_resistance_or_watts_dirty = true;
-        self.is_header_dirty = true;
+        let new = self.config.power.inc();
+        if new == self.config.power {
+            self.config.power = new;
+            self.is_power_or_limit_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
+            self.is_header_dirty = true;
+            self.last = Some(Action::Power(true));
+        }
     }
 
     pub fn dec_power(&mut self) {
-        self.config.power = self.config.power.dec();
-        self.is_power_or_limit_dirty = true;
-        self.is_resistance_or_watts_dirty = true;
-        self.is_header_dirty = true;
+        let new = self.config.power.dec();
+        if new == self.config.power {
+            self.config.power = new;
+            self.is_power_or_limit_dirty = true;
+            self.is_resistance_or_watts_dirty = true;
+            self.is_header_dirty = true;
+            self.last = Some(Action::Power(false));
+        }
     }
 
     pub fn inc_limit(&mut self) {
         if self.config.limit < LIMIT_RANGE.end {
             self.config.limit += 1;
             self.is_power_or_limit_dirty = true;
+            self.last = Some(Action::Limit(true));
         }
     }
 
@@ -154,6 +163,7 @@ impl State {
         if self.config.limit > LIMIT_RANGE.start {
             self.config.limit -= 1;
             self.is_power_or_limit_dirty = true;
+            self.last = Some(Action::Limit(false));
         }
     }
 
@@ -161,6 +171,7 @@ impl State {
         if self.config.resistance < RESISTANCE_RANGE.end {
             self.config.resistance += 1;
             self.is_resistance_or_watts_dirty = true;
+            self.last = Some(Action::Resistance(true));
         }
     }
 
@@ -168,6 +179,7 @@ impl State {
         if self.config.resistance > RESISTANCE_RANGE.start {
             self.config.resistance -= 1;
             self.is_resistance_or_watts_dirty = true;
+            self.last = Some(Action::Resistance(false));
         }
     }
 
@@ -175,6 +187,7 @@ impl State {
         if self.config.brightness < BRIGHTNESS_RANGE.end {
             self.config.brightness += 1;
             self.is_brightness_dirty = true;
+            self.last = Some(Action::Brightness(true));
         }
     }
 
@@ -182,6 +195,7 @@ impl State {
         if self.config.brightness > BRIGHTNESS_RANGE.start {
             self.config.brightness -= 1;
             self.is_brightness_dirty = true;
+            self.last = Some(Action::Brightness(false));
         }
     }
 

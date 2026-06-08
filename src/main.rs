@@ -20,10 +20,8 @@ use vape::core::charging::Charging;
 use vape::core::renderer::Renderer;
 use vape::core::timer::Timer;
 use vape::data::action::Action;
-use vape::data::button::Button;
 use vape::data::config::Config;
 use vape::data::mode::Mode;
-use vape::data::power::Power;
 use vape::data::state::State;
 use vape::data::stats::Stats;
 use vape::ext::led_ext::LedExt;
@@ -36,7 +34,7 @@ use vape::games::life::life::draw_life;
 use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, BRIGHTNESS_RANGE, DISPLAY_PRECHARGE, IDLE_PERIOD, LIMIT_RANGE, RESISTANCE_RANGE, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
+use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -213,9 +211,7 @@ fn handle_pressed(
         revert_last(state);
         state.reset_mode();
     }
-    if state.buttons == (false, false) && (left_pressed ^ right_pressed) {
-        state.last = last_action(state, Button::from(left_pressed, right_pressed));
-    } else if left_pressed == right_pressed {
+    if left_pressed == right_pressed {
         state.last = None
     }
     match state.mode {
@@ -237,54 +233,27 @@ fn handle_pressed(
     state.set_pressed(left_pressed, right_pressed);
 }
 
-fn last_action(state: &mut State, button: Option<Button>) -> Option<Action> {
-    let button = button?;
-    return match state.mode {
-        Mode::Work { .. } => None,
-        Mode::Power => match state.config.power {
-            Power::Rare if button.is_left() => None,
-            Power::Hard if button.is_right() => None,
-            _ => Some(Action::Power(button)),
-        },
-        Mode::Limit => match state.config.limit {
-            v if v == LIMIT_RANGE.start && button.is_left() => None,
-            v if v == LIMIT_RANGE.end && button.is_right() => None,
-            _ => Some(Action::Limit(button)),
-        },
-        Mode::Resistance => match state.config.resistance {
-            v if v == RESISTANCE_RANGE.start && button.is_left() => None,
-            v if v == RESISTANCE_RANGE.end && button.is_right() => None,
-            _ => Some(Action::Resistance(button)),
-        },
-        Mode::Brightness => match state.config.brightness {
-            v if v == BRIGHTNESS_RANGE.start && button.is_left() => None,
-            v if v == BRIGHTNESS_RANGE.end && button.is_right() => None,
-            _ => Some(Action::Brightness(button)),
-        },
-    }
-}
-
 fn revert_last(state: &mut State) {
     let last = match &state.last {
         Some(last) => last,
         None => return,
     };
     match last {
-        Action::Power(btn) => match btn {
-            Button::Left => state.inc_power(),
-            Button::Right => state.dec_power(),
+        Action::Power(increment) => match increment {
+            true => state.dec_power(),
+            false => state.inc_power(),
         },
-        Action::Limit(btn) => match btn {
-            Button::Left => state.inc_limit(),
-            Button::Right => state.dec_limit(),
+        Action::Limit(increment) => match increment {
+            true => state.dec_limit(),
+            false => state.inc_limit(),
         },
-        Action::Resistance(btn) => match btn {
-            Button::Left => state.inc_resistance(),
-            Button::Right => state.dec_resistance(),
+        Action::Resistance(increment) => match increment {
+            true => state.dec_resistance(),
+            false => state.inc_resistance(),
         },
-        Action::Brightness(btn) => match btn {
-            Button::Left => state.inc_brightness(),
-            Button::Right => state.dec_brightness(),
+        Action::Brightness(increment) => match increment {
+            true => state.dec_brightness(),
+            false => state.inc_brightness(),
         },
     }
     state.last = None;
