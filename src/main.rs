@@ -175,7 +175,7 @@ async fn bustle() -> ! {
                     state.update_max_mv();
                 }
             }
-        } else if state.battery_status.is_powered() {
+        } else if state.battery.status.is_powered() {
             state.reset_mode();
             was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             now = timer.now();
@@ -189,8 +189,8 @@ async fn bustle() -> ! {
         }
         if state.config != config {
             config = state.config.clone();
-            /* todo storage.save(&mut config_buf, config.clone())
-                .await.soft_unwrap();*/
+            storage.save(&mut config_buf, config.clone())
+                .await.soft_unwrap();
         }
         if state.stats != stats {
             stats = state.stats.clone();
