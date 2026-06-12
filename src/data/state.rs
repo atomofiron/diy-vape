@@ -149,7 +149,7 @@ impl State {
 
     pub fn inc_power(&mut self) {
         let new = self.config.power.inc();
-        if new == self.config.power {
+        if new != self.config.power {
             self.config.power = new;
             self.is_power_or_limit_dirty = true;
             self.is_resistance_or_watts_dirty = true;
@@ -160,7 +160,7 @@ impl State {
 
     pub fn dec_power(&mut self) {
         let new = self.config.power.dec();
-        if new == self.config.power {
+        if new != self.config.power {
             self.config.power = new;
             self.is_power_or_limit_dirty = true;
             self.is_resistance_or_watts_dirty = true;
