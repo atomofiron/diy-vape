@@ -4,8 +4,8 @@ use crate::data::battery::Battery;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::types::{Duty, MilliVolt, MilliWatt, Percent, Time};
-use crate::values::{BRIGHTNESS_RANGE, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
+use crate::types::{DeciSecond, Duty, MilliVolt, MilliWatt, Percent, Time};
+use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
 
 pub struct State {
     pub mode: Mode,
@@ -16,6 +16,8 @@ pub struct State {
     pub buttons: (bool, bool), // left, right
     pub is_display_on: bool,
     pub last: Option<Action>,
+    pub puff_duration: Time,
+    pub puff_trigger: bool, // true = counted
 
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
@@ -39,6 +41,8 @@ impl State {
             buttons: (false, false),
             is_display_on: true,
             last: None,
+            puff_duration: 0,
+            puff_trigger: false,
 
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
@@ -127,6 +131,20 @@ impl State {
             }
             _ => return,
         };
+    }
+
+    pub fn calc_stat_total(&mut self) -> DeciSecond {
+        let mut duration = (self.puff_duration / DECI_SECOND) as DeciSecond;
+        let part = self.puff_duration & DECI_SECOND;
+        if part >= DECI_SECOND / 2 {
+            duration += 1
+        };
+        return self.stats.total + duration
+    }
+
+    pub fn commit_stat_total(&mut self) {
+        self.stats.total = self.calc_stat_total();
+        self.puff_duration = 0;
     }
 
     pub fn inc_power(&mut self) {

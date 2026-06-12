@@ -192,8 +192,8 @@ async fn bustle() -> ! {
         }
         if state.stats != stats {
             stats = state.stats.clone();
-            /* todo storage.save(&mut stats_buf, stats.clone())
-                .await.soft_unwrap();*/
+            storage.save(&mut stats_buf, stats.clone())
+                .await.soft_unwrap();
         }
         timer.sleep_ms(IDLE_PERIOD as u32)
             .unwrap_or_else(|_| red.blink());
@@ -216,7 +216,7 @@ fn handle_pressed(
     }
     match state.mode {
         Mode::Work { duty, .. } if duty.is_none() && adc.fetch_usb_connection() => (),
-        Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
+        Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty_and_stats(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
         _ if state.buttons == (left_pressed, right_pressed) => (),
         _ if state.buttons.0 || state.buttons.1 => (),
         _ if left_pressed == right_pressed => (),
@@ -259,7 +259,7 @@ fn revert_last(state: &mut State) {
     state.last = None;
 }
 
-fn calc_work_progress_and_duty(
+fn calc_work_progress_and_duty_and_stats(
     state: &mut State,
     adc: &mut Adc,
     left_pressed: bool,
@@ -281,8 +281,14 @@ fn calc_work_progress_and_duty(
         true => duration -= min(now - prev, duration),
         _ if !state.buttons.0 => (),
         _ if !state.buttons.1 => (),
-        _ => duration += now - prev,
+        _ => {
+            let dt = now - prev;
+            duration += dt;
+            state.puff_duration += dt;
+            state.is_statusbar_dirty = true;
+        },
     }
+    commit_stats(state, left_pressed, right_pressed, duration);
     state.set_work_duration(duration, now, cool_down);
     match start {
         _ if cool_down || duration == 0 && !left_pressed && !right_pressed => state.set_work_duty(None, None),
@@ -316,6 +322,18 @@ fn calc_work_progress_and_duty(
                 state.set_work_duty(None, Some(duty * 0 + TEST_DUTY)); // todo duty
             }
         },
+    }
+}
+
+fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, duration: Time) {
+    if state.buttons.0 && state.buttons.1 && (!left_pressed || !right_pressed) {
+        state.commit_stat_total();
+    }
+    if !state.puff_trigger && duration > PUFF_THRESHOLD {
+        state.stats.count += 1;
+        state.puff_trigger = true;
+    } else if state.puff_trigger && duration == 0 {
+        state.puff_trigger = false;
     }
 }
 

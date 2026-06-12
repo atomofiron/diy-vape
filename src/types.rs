@@ -25,4 +25,4 @@ pub type Percent = u8;
 pub type Duty = u16;
 pub type Progress = u8;
 pub type Brightness = u8;
-pub type Time = u64;
+pub type Time = u64; // ms
