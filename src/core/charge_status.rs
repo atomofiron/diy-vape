@@ -27,10 +27,10 @@ impl ChargeStatus {
 
     pub fn is_powered(&self) -> bool {
         match self {
+            ChargeStatus::Unknown |
             ChargeStatus::Discharging => false,
             ChargeStatus::Charging |
-            ChargeStatus::Full |
-            ChargeStatus::Unknown => true,
+            ChargeStatus::Full => true,
         }
     }
 }
