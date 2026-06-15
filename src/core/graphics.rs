@@ -13,7 +13,7 @@ pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
 
 type TextStyle<'l> = MonoTextStyle<'l, BinaryColor>;
 type FigureStyle = PrimitiveStyle<BinaryColor>;
-type StyledPolyline<'l> = Styled<Polyline<'l>, FigureStyle>;
+pub type StyledPolyline<'l> = Styled<Polyline<'l>, FigureStyle>;
 type StyledLine = Styled<Line, FigureStyle>;
 
 pub const WHITE_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::On);
@@ -30,29 +30,6 @@ pub const HEADER_POINT: Point = Point::new(HEADER_OFFSET, 0);
 pub const HEADER_SIZE: Size = Size::new(HEADER_WIDTH, AREA);
 pub const CORNER_RADII: CornerRadii = CornerRadii::new(Size::new(RADIUS, RADIUS));
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
-
-// ˟
-const CROSS_POINTS: [Point; 5] = [Point::new(0, 0), Point::new(4, 4), Point::new(2, 2), Point::new(0, 4), Point::new(4, 0)];
-pub const ICON_CROSS: StyledPolyline = Styled::new(Polyline::new(&CROSS_POINTS), WHITE_STROKE);
-
-// Ω
-const OHM_POINTS: [Point; 12] = [Point::new(0, 9), Point::new(2, 9), Point::new(2, 7), Point::new(0, 5), Point::new(0, 3), Point::new(3, 0), Point::new(5, 0), Point::new(8, 3), Point::new(8, 5), Point::new(6, 7), Point::new(6, 9), Point::new(8, 9)];
-pub const ICON_OHM: StyledPolyline = Styled::new(Polyline::new(&OHM_POINTS), WHITE_STROKE);
-
-// ⚡ (fill)
-const CHARGING_POINTS: [Point; 7] = [Point::new(3, 0), Point::new(0, 7), Point::new(5, 3), Point::new(2, 10), Point::new(2, 4), Point::new(3, 6), Point::new(3, 2)];
-pub const ICON_CHARGING: Polyline = Polyline::new(&CHARGING_POINTS);
-
-// ⚡ (stroke)
-const CHARGED_POINTS: [Point;8] = [Point::new(3, 0), Point::new(0, 7), Point::new(0, 6), Point::new(1, 5), Point::new(4, 5), Point::new(5, 4), Point::new(5, 3), Point::new(2, 10)];
-pub const ICON_CHARGED: Polyline = Polyline::new(&CHARGED_POINTS);
-
-// !
-const WARNING_POINTS: [Point; 8] = [Point::new(0, 9), Point::new(0, 10), Point::new(1, 10), Point::new(1, 8), Point::new(0, 7), Point::new(0, 0), Point::new(1, 0), Point::new(1, 6)];
-pub const ICON_WARNING: Polyline = Polyline::new(&WARNING_POINTS);
-
-// empty
-pub const ICON_EMPTY: Polyline = Polyline::new(&[]);
 
 pub fn space(size: u32) -> StyledLine {
     Line::new(Point::new(0, 0), Point::new(size as i32 - 1, 0))
