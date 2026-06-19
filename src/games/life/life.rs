@@ -21,8 +21,8 @@ pub fn draw_life(
     }
     display.set_addr_mode(AddrMode::Vertical)
         .ignore();
-    display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8)).
-        ignore();
+    display.set_draw_area((0, 0), (WIDTH as u8, HEIGHT as u8))
+        .ignore();
     let splash = with_splashes && (now >= universe.last_splash + 2044); // ≈2 sec
     if splash {
         universe.last_splash = now;

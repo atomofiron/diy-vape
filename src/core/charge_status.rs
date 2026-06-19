@@ -1,9 +1,10 @@
 
 #[derive(PartialEq)]
 pub enum ChargeStatus {
-    Discharging, // '' initial status
-    Charging, // '⚡' (fill)
-    Full, // '⚡' (stroke)
+    Discharging, // ''
+    Charging, // '⚡'
+    Full, // '⚡' (inverted)
+    Reverse, // '↩'
     Unknown, // '!' intermediate state, no battery, etc.
 }
 
@@ -16,18 +17,22 @@ impl Default for ChargeStatus {
 
 impl ChargeStatus {
 
-    pub fn pick(charging: bool, full: bool) -> ChargeStatus {
-        match (charging, full) {
-            (false, false) => ChargeStatus::Discharging,
-            (true, false) => ChargeStatus::Charging,
-            (false, true) => ChargeStatus::Full,
-            (true, true) => ChargeStatus::Unknown,
+    pub fn pick(charging: bool, full: bool, reverse: bool) -> ChargeStatus {
+        if charging && reverse || reverse && full {
+            return ChargeStatus::Unknown;
+        }
+        match (charging, full, reverse) {
+            (_, true, _) => ChargeStatus::Full,
+            (true, _, _) => ChargeStatus::Charging,
+            (_, _, true) => ChargeStatus::Reverse,
+            _ => ChargeStatus::Discharging,
         }
     }
 
     pub fn is_powered(&self) -> bool {
         match self {
             ChargeStatus::Unknown |
+            ChargeStatus::Reverse |
             ChargeStatus::Discharging => false,
             ChargeStatus::Charging |
             ChargeStatus::Full => true,

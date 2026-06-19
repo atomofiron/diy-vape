@@ -4,7 +4,7 @@ use embedded_graphics::mono_font::ascii::{FONT_7X13_BOLD, FONT_7X14, FONT_7X14_B
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::{Primitive, Size};
-use embedded_graphics::primitives::{CornerRadii, Line, Polyline, PrimitiveStyle, Rectangle, RoundedRectangle, Styled};
+use embedded_graphics::primitives::{CornerRadii, Line, PrimitiveStyle, Rectangle, RoundedRectangle, Styled};
 
 pub const AREA: u32 = 16;
 pub const RADIUS: u32 = AREA / 2;
@@ -13,7 +13,6 @@ pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
 
 type TextStyle<'l> = MonoTextStyle<'l, BinaryColor>;
 type FigureStyle = PrimitiveStyle<BinaryColor>;
-pub type StyledPolyline<'l> = Styled<Polyline<'l>, FigureStyle>;
 type StyledLine = Styled<Line, FigureStyle>;
 
 pub const WHITE_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X14, BinaryColor::On);
@@ -30,6 +29,8 @@ pub const HEADER_POINT: Point = Point::new(HEADER_OFFSET, 0);
 pub const HEADER_SIZE: Size = Size::new(HEADER_WIDTH, AREA);
 pub const CORNER_RADII: CornerRadii = CornerRadii::new(Size::new(RADIUS, RADIUS));
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
+pub const CATHODE: Line = Line::new(Point::new(0, 0), Point::new(0, 4));
+pub const BATTERY_CELL: RoundedRectangle = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)));
 
 pub fn space(size: u32) -> StyledLine {
     Line::new(Point::new(0, 0), Point::new(size as i32 - 1, 0))

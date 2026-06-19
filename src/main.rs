@@ -59,8 +59,8 @@ async fn bustle() -> ! {
     let port1 = Parts1::new(peripherals.P1);
 
     let mut touch = port1.p1_13.into_floating_input().degrade();
-    let mut left_btn = port1.p1_11.into_pullup_input().degrade();
-    let mut right_btn = port1.p1_12.into_pullup_input().degrade();
+    let mut left_btn = port1.p1_12.into_pullup_input().degrade();
+    let mut right_btn = port1.p1_11.into_pullup_input().degrade();
 
     let mut red = port0.p0_26.into_push_pull_output(Level::High).degrade();
     let mut green = port0.p0_30.into_push_pull_output(Level::High).degrade();
@@ -81,6 +81,7 @@ async fn bustle() -> ! {
     let mut charging = Charging::new(
         port0.p0_02.into_floating_input().degrade(),
         port0.p0_03.into_floating_input().degrade(),
+        port0.p0_28.into_floating_input().degrade(),
     );
     let scl = port0.p0_05.into_floating_input()
         .degrade();
@@ -138,7 +139,7 @@ async fn bustle() -> ! {
             green.off()
         }
         let mut interaction = was_touched != touched;
-        interaction = interaction || state.buttons != (left_pressed, right_pressed);
+        interaction = interaction || !state.buttons(left_pressed, right_pressed);
         interaction = update_charging(&mut state, &mut charging) || interaction;
         interaction = adc.update_usb_connection() || interaction;
         was_touched = touched;
@@ -207,7 +208,7 @@ fn handle_pressed(
     right_pressed: bool,
     now: Time,
 ) {
-    if !state.is_work() && (state.buttons.0 ^ state.buttons.1) && left_pressed && right_pressed {
+    if !state.is_work() && (state.buttons.left ^ state.buttons.right) && left_pressed && right_pressed {
         revert_last(state);
         state.reset_mode();
     }
@@ -217,8 +218,8 @@ fn handle_pressed(
     match state.mode {
         Mode::Work { duty, .. } if duty.is_none() && adc.fetch_usb_connection() => (),
         Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty_and_stats(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
-        _ if state.buttons == (left_pressed, right_pressed) => (),
-        _ if state.buttons.0 || state.buttons.1 => (),
+        _ if state.buttons(left_pressed, right_pressed) => (),
+        _ if state.buttons.left || state.buttons.right => (),
         _ if left_pressed == right_pressed => (),
         Mode::Power if left_pressed => state.dec_power(),
         Mode::Power if right_pressed => state.inc_power(),
@@ -279,8 +280,8 @@ fn calc_work_progress_and_duty_and_stats(
     let cool_down = duration >= limit || cool_down && (duration > 0 || left_pressed || right_pressed);
     match cool_down || !left_pressed || !right_pressed {
         true => duration -= min(now - prev, duration),
-        _ if !state.buttons.0 => (),
-        _ if !state.buttons.1 => (),
+        _ if !state.buttons.left => (),
+        _ if !state.buttons.right => (),
         _ => {
             let dt = now - prev;
             duration += dt;
@@ -326,7 +327,7 @@ fn calc_work_progress_and_duty_and_stats(
 }
 
 fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, duration: Time) {
-    if state.buttons.0 && state.buttons.1 && (!left_pressed || !right_pressed) {
+    if state.buttons.left && state.buttons.right && (!left_pressed || !right_pressed) {
         state.commit_stat_total();
     }
     if !state.puff_trigger && duration > PUFF_THRESHOLD {
@@ -376,7 +377,9 @@ fn update_charging(
         .soft_unwrap_or(false);
     let is_full = charging.is_full()
         .soft_unwrap_or(false);
-    return state.set_charge_status(is_charging, is_full)
+    let is_reverse = charging.is_reverse()
+        .soft_unwrap_or(false);
+    return state.set_charge_status(is_charging, is_full, is_reverse)
 }
 
 fn screen_saver(

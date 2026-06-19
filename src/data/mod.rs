@@ -1,3 +1,4 @@
+mod buttons;
 pub mod action;
 pub mod battery;
 pub mod config;

@@ -1,6 +1,7 @@
 use crate::core::charge_status::ChargeStatus;
 use crate::data::action::Action;
 use crate::data::battery::Battery;
+use crate::data::buttons::Buttons;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
@@ -13,20 +14,19 @@ pub struct State {
     pub stats: Stats,
     pub battery: Battery,
 
-    pub buttons: (bool, bool), // left, right
+    pub buttons: Buttons,
     pub is_display_on: bool,
     pub last: Option<Action>,
     pub puff_duration: Time,
     pub puff_trigger: bool, // true = counted
 
+    pub are_buttons_dirty: bool,
     pub is_header_dirty: bool,
     pub is_power_or_limit_dirty: bool,
     pub is_resistance_or_watts_dirty: bool,
-    pub is_brightness_dirty: bool,
-    pub is_footer_dirty: bool,
-
-    pub are_buttons_dirty: bool,
     pub is_statusbar_dirty: bool,
+    pub is_status_dirty: bool,
+    pub is_brightness_dirty: bool,
 }
 
 impl State {
@@ -38,21 +38,24 @@ impl State {
             stats,
             battery: Battery::default(),
 
-            buttons: (false, false),
+            buttons: Buttons::default(),
             is_display_on: true,
             last: None,
             puff_duration: 0,
             puff_trigger: false,
 
+            are_buttons_dirty: true,
             is_header_dirty: true,
             is_power_or_limit_dirty: true,
             is_resistance_or_watts_dirty: true,
-            is_brightness_dirty: true,
-            is_footer_dirty: true,
-
-            are_buttons_dirty: true,
             is_statusbar_dirty: true,
+            is_status_dirty: false,
+            is_brightness_dirty: true,
         }
+    }
+
+    pub fn buttons(&self, left: bool, right: bool) -> bool {
+        self.buttons.left == left && self.buttons.right == right
     }
 
     pub fn is_work(&self) -> bool {
@@ -60,6 +63,10 @@ impl State {
             Mode::Work { .. } => true,
             _ => false,
         }
+    }
+
+    pub fn is_brightness(&self) -> bool {
+        self.mode == Mode::Brightness
     }
 
     pub fn duty(&self) -> Option<Duty> {
@@ -87,7 +94,9 @@ impl State {
     pub fn set_mode(&mut self, mode: Mode) {
         self.is_header_dirty = true;
         self.mark_current_dirty();
+        self.is_status_dirty = self.is_work();
         self.mode = mode;
+        self.is_statusbar_dirty = self.is_work();
         self.mark_current_dirty();
     }
 
@@ -224,8 +233,8 @@ impl State {
         }
     }
 
-    pub fn set_charge_status(&mut self, charging: bool, full: bool) -> bool {
-        let status = ChargeStatus::pick(charging, full);
+    pub fn set_charge_status(&mut self, charging: bool, full: bool, reverse: bool) -> bool {
+        let status = ChargeStatus::pick(charging, full, reverse);
         if status != self.battery.status {
             self.battery.status = status;
             self.is_statusbar_dirty = true;
@@ -259,10 +268,10 @@ impl State {
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {
-        if self.buttons != (left, right) {
+        if !self.buttons(left, right) {
             self.are_buttons_dirty = true;
-            self.buttons.0 = left;
-            self.buttons.1 = right;
+            self.buttons.left = left;
+            self.buttons.right = right;
         }
     }
 
@@ -285,22 +294,23 @@ impl State {
     }
 
     pub fn is_smth_dirty(&self) -> bool {
-        return self.are_buttons_dirty
+        self.are_buttons_dirty
             || self.is_header_dirty
             || self.is_power_or_limit_dirty
             || self.is_resistance_or_watts_dirty
+            || self.is_status_dirty
             || self.is_brightness_dirty
             || self.is_statusbar_dirty
     }
 
     pub fn mark_all_dirty(&mut self) {
+        self.are_buttons_dirty = true;
         self.is_header_dirty = true;
         self.is_power_or_limit_dirty = true;
         self.is_resistance_or_watts_dirty = true;
-        match self.mode {
-            Mode::Work { .. } => self.is_statusbar_dirty = true,
-            _ => self.is_brightness_dirty = true,
-        }
+        self.is_status_dirty = true;
+        self.is_statusbar_dirty = true;
+        self.is_brightness_dirty = true;
     }
 
     pub fn limit_ms(&self) -> Time {

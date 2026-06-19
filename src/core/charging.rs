@@ -8,12 +8,13 @@ type Pin = PinIn<Floating>;
 pub struct Charging {
     charging: Pin,
     standby: Pin,
+    reverse: Pin,
 }
 
 impl Charging {
 
-    pub fn new(charging: Pin, standby: Pin) -> Charging {
-        Charging { charging, standby }
+    pub fn new(charging: Pin, standby: Pin, reverse: Pin) -> Charging {
+        Charging { charging, standby, reverse }
     }
 
     pub fn is_charging(&mut self) -> Rslt<bool> {
@@ -24,5 +25,10 @@ impl Charging {
     pub fn is_full(&mut self) -> Rslt<bool> {
         self.standby.is_low()
             .map_err(|_| ErrorMessage("charging standby check failed"))
+    }
+
+    pub fn is_reverse(&mut self) -> Rslt<bool> {
+        self.reverse.is_low()
+            .map_err(|_| ErrorMessage("reverse check failed"))
     }
 }

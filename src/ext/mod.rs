@@ -1,3 +1,4 @@
+pub mod image_ext;
 pub mod option_ext;
 pub mod led_ext;
 pub mod result_ext;
