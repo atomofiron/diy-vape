@@ -1,4 +1,4 @@
-use crate::types::{FigureStyle, Icon, IconRaw};
+use crate::types::{FigureStyle, IconRaw};
 
 #[derive(Clone)]
 pub struct TabView {

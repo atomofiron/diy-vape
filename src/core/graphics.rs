@@ -59,7 +59,6 @@ pub const LAST_TAB_CORNER_RADII: CornerRadii = CornerRadii {
     bottom_left: CORNER_MINI,
 };
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
-pub const TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(Point::new(0, 0), Size::new(TAB_WIDTH, AREA)), CORNER_RADII);
 pub const FIRST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), FIRST_TAB_CORNER_RADII);
 pub const MIDDLE_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), MIDDLE_TAB_CORNER_RADII);
 pub const LAST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(SECOND_TAB_POINT, Size::new(TAB_WIDTH, AREA)), LAST_TAB_CORNER_RADII);
