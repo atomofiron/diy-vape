@@ -67,7 +67,8 @@ impl RendererImpl for State {
                     .draw(display)
                     .ignore();
                 let cut_point = kopy!(point, x = point.x + progress as i32);
-                Rectangle::new(cut_point, Size::new(AREA, AREA))
+                let cut_width = min(AREA, HEADER_WIDTH - progress);
+                Rectangle::new(cut_point, Size::new(cut_width, AREA))
                     .into_styled(BLACK_FILL)
                     .draw(display)
                     .ignore();
@@ -311,7 +312,7 @@ impl RendererImpl for State {
         if self.is_header_dirty {
             self.draw_header(display);
         }
-        if self.are_buttons_dirty || self.is_header_dirty { // header draws over the right button
+        if self.are_buttons_dirty {
             self.draw_buttons(display);
         }
         if self.is_power_or_limit_dirty {
