@@ -2,6 +2,7 @@ mod cleaner;
 mod graphics;
 mod icons;
 mod strings;
+mod tab;
 
 pub mod adc;
 pub mod renderer;

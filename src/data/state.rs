@@ -5,6 +5,7 @@ use crate::data::buttons::Buttons;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
+use crate::data::tab::Tab;
 use crate::types::{DeciSecond, Duty, MilliVolt, MilliWatt, Percent, Time};
 use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
 
@@ -58,17 +59,6 @@ impl State {
         self.buttons.left == left && self.buttons.right == right
     }
 
-    pub fn is_work(&self) -> bool {
-        match self.mode {
-            Mode::Work { .. } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_brightness(&self) -> bool {
-        self.mode == Mode::Brightness
-    }
-
     pub fn duty(&self) -> Option<Duty> {
         match self.mode {
             Mode::Work { duty, .. } => duty,
@@ -94,18 +84,31 @@ impl State {
     pub fn set_mode(&mut self, mode: Mode) {
         self.is_header_dirty = true;
         self.mark_current_dirty();
-        self.is_status_dirty = self.is_work();
         self.mode = mode;
-        self.is_statusbar_dirty = self.is_work();
+        self.is_statusbar_dirty = self.mode.is_work();
+        self.is_brightness_dirty = self.mode.is_settings();
         self.mark_current_dirty();
+    }
+
+    pub fn next_tab(&mut self) {
+        let new = match self.mode {
+            Mode::Tabs(Tab::Settings) => Tab::Puffs,
+            Mode::Tabs(Tab::Puffs) => Tab::Settings,
+            _ => return,
+        };
+        self.mode = Mode::Tabs(new);
+        self.is_header_dirty = true;
     }
 
     fn mark_current_dirty(&mut self) {
         match self.mode {
             Mode::Work { .. } => self.is_statusbar_dirty = true,
+            Mode::Tabs(..) => (),
             Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
             Mode::Resistance => self.is_resistance_or_watts_dirty = true,
             Mode::Brightness => self.is_brightness_dirty = true,
+            Mode::ResetCoil => (), // todo
+            Mode::ResetStats => (), // todo
         }
     }
 

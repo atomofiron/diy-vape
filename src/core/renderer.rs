@@ -1,14 +1,15 @@
 use crate::core::charge_status::ChargeStatus;
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CATHODE, CORNER_RADII, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CATHODE, CORNER_RADII, FIRST_TAB_RECTANGLE, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, SECOND_TAB_RECTANGLE, TAB_MARGIN, TAB_PUFFS, TAB_SETTINGS, TEXT_ICON_MARGIN, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
-use crate::core::icons::{BRIGHTNESS_ICON_SIZE, ICON_PUFF, MOON_FILL, MOON_STROKE, SUN_FILL, SUN_STROKE};
+use crate::core::icons::{BRIGHTNESS_ICON_SIZE, ICON_PUFF, ICON_VOLTAGE, MOON_FILL, MOON_STROKE, SUN_FILL, SUN_STROKE};
 use crate::core::icons::{ICON_CHARGED, ICON_CHARGING, ICON_CROSS, ICON_EMPTY, ICON_OHM, ICON_ONE, ICON_REVERSE, ICON_WARNING};
-use crate::core::strings::{BRIGHTNESS, HARD, LIMIT, MEDIUM, POWER, RARE, RESISTANCE, WELL};
+use crate::core::strings::{BRIGHTNESS, HARD, LIMIT, MEDIUM, POWER, RARE, RESET_ALL, RESET_COIL, RESISTANCE, WELL};
 use crate::data::mode::Mode;
 use crate::data::power::Power;
 use crate::data::state::State;
-use crate::ext::image_ext::ImageRawExt;
+use crate::data::tab::Tab;
+use crate::ext::image_ext::IconRawExt;
 use crate::ext::result_ext::ResultExt;
 use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
@@ -30,6 +31,7 @@ pub trait Renderer {
 
 trait RendererImpl {
     fn draw_header(&mut self, display: &mut Display);
+    fn draw_tabs(selected: &Tab, display: &mut Display);
     fn draw_power_and_limit(&mut self, display: &mut Display);
     fn draw_resistance_and_watt(&mut self, display: &mut Display);
     fn draw_status(&mut self, display: &mut Display);
@@ -77,7 +79,8 @@ impl RendererImpl for State {
                     .draw(display)
                     .ignore();
                 return
-            }
+            },
+            Mode::Tabs(selected) => return Self::draw_tabs(&selected, display),
             Mode::Power => {
                 display.clear_header(true);
                 let title = format!(10, "{POWER} {}%", self.config.power.percents());
@@ -90,10 +93,34 @@ impl RendererImpl for State {
             Mode::Limit => LIMIT,
             Mode::Resistance => RESISTANCE,
             Mode::Brightness => BRIGHTNESS,
+            Mode::ResetCoil => RESET_COIL,
+            Mode::ResetStats => RESET_ALL,
         };
         display.clear_header(true);
         Text::new(title, Point::new(0, VISUAL_BASELINE_14), BLACK_BOLD_TEXT)
             .center()
+            .draw(display)
+            .ignore();
+    }
+
+    fn draw_tabs(selected: &Tab, display: &mut Display) {
+        display.clear_header(false);
+        let display_area = display.bounding_box();
+        
+        let view = TAB_SETTINGS.peek(*selected == Tab::Settings);
+        let tab = FIRST_TAB_RECTANGLE.into_styled(view.background);
+        let icon = view.icon.to_icon().align_to(&tab, horizontal::Center, vertical::Center);
+        let first = Chain::new(icon).append(tab);
+
+        let view = TAB_PUFFS.peek(*selected == Tab::Puffs);
+        let tab = SECOND_TAB_RECTANGLE.into_styled(view.background);
+        let icon = view.icon.to_icon().align_to(&tab, horizontal::Center, vertical::Center);
+        let second = Chain::new(icon).append(tab);
+
+        LinearLayout::horizontal(Chain::new(first).append(second))
+            .with_spacing(TAB_MARGIN)
+            .arrange()
+            .align_to(&display_area, horizontal::Center, vertical::Top)
             .draw(display)
             .ignore();
     }
@@ -116,7 +143,7 @@ impl RendererImpl for State {
         let limit = Text::new(seconds.as_str(), Point::new(0, 14), if is_limit { BLACK_TEXT } else { WHITE_TEXT });
 
         let chain = Chain::new(Chain::new(power).append(power.background(is_power)))
-            .append(ICON_CROSS.to_image())
+            .append(ICON_CROSS.to_icon())
             .append(Chain::new(limit).append(limit.background(is_limit)));
 
         LinearLayout::horizontal(chain)
@@ -144,7 +171,7 @@ impl RendererImpl for State {
         let watt = Text::new(watt.as_str(), Point::new(0, 14), WHITE_TEXT);
         let chain = Chain::new(Chain::new(resistance).append(resistance.background(is_resistance)))
             .append(space(2))
-            .append(ICON_OHM.to_image())
+            .append(ICON_OHM.to_icon())
             .append(space(12))
             .append(watt)
             .append(space(3)); // because of resistance has a background
@@ -162,11 +189,11 @@ impl RendererImpl for State {
 
         let display_area = display.bounding_box();
         let count = format!(10, "{}", self.stats.count);
-        let counter = Chain::new(ICON_PUFF.to_image())
+        let counter = Chain::new(ICON_PUFF.to_icon())
             .append(Text::new(count.as_str(), Point::new(0, 0), WHITE_TEXT));
 
         LinearLayout::horizontal(counter)
-            .with_spacing(FixedMargin(2))
+            .with_spacing(TEXT_ICON_MARGIN)
             .with_alignment(vertical::Center)
             .arrange()
             .align_to(&display_area, horizontal::Left, vertical::Bottom)
@@ -176,11 +203,11 @@ impl RendererImpl for State {
         let volts = self.battery.idle
             .map(|mv| format!(6, "{:.3}v", mv as f32 / 1000.0))
             .unwrap_or_else(|| string::<6>("-.---v"));
-        let voltage = Chain::new(ICON_CHARGING.to_image())
+        let voltage = Chain::new(ICON_VOLTAGE.to_icon())
             .append(Text::new(volts.as_str(), Point::new(0, 0), WHITE_TEXT));
 
         LinearLayout::horizontal(voltage)
-            .with_spacing(FixedMargin(2))
+            .with_spacing(TEXT_ICON_MARGIN)
             .with_alignment(vertical::Center)
             .arrange()
             .align_to(&display_area, horizontal::Right, vertical::Bottom)
@@ -193,10 +220,10 @@ impl RendererImpl for State {
 
         let icon_y = (SCREEN_HEIGHT - BRIGHTNESS_ICON_SIZE) as i32;
         let icon_x = 2;
-        let moon = if self.mode == Mode::Brightness { MOON_FILL } else { MOON_STROKE };
+        let moon = if self.mode.is_brightness() { MOON_FILL } else { MOON_STROKE };
         Image::new(&moon, Point::new(icon_x, icon_y))
             .draw(display).ignore();
-        let sun = if self.mode == Mode::Brightness { SUN_FILL } else { SUN_STROKE };
+        let sun = if self.mode.is_brightness() { SUN_FILL } else { SUN_STROKE };
         let icon_x = (SCREEN_WIDTH - BRIGHTNESS_ICON_SIZE) as i32 - icon_x;
         Image::new(&sun, Point::new(icon_x, icon_y))
             .draw(display).ignore();
@@ -207,7 +234,7 @@ impl RendererImpl for State {
         let offset = (SCREEN_WIDTH as i32 - width * (dashes * 2 - 1)) / 2;
         let y = (SCREEN_HEIGHT - BRIGHTNESS_ICON_SIZE / 2) as i32;
         let brightness = self.config.brightness as i32;
-        let focused = self.mode == Mode::Brightness;
+        let focused = self.mode.is_brightness();
         for i in 0..dashes {
             let x = offset + i * step;
             let on = i <= brightness;
@@ -246,13 +273,13 @@ impl RendererImpl for State {
         let level = self.get_battery_level();
         let icon = match self.battery.status {
             ChargeStatus::Discharging => match &level {
-                Some(100) => ICON_ONE.to_image(),
-                _ => ICON_EMPTY.to_image(),
+                Some(100) => ICON_ONE.to_icon(),
+                _ => ICON_EMPTY.to_icon(),
             },
-            ChargeStatus::Charging => ICON_CHARGING.to_image(),
-            ChargeStatus::Full => ICON_CHARGED.to_image(),
-            ChargeStatus::Reverse =>  ICON_REVERSE.to_image(),
-            ChargeStatus::Unknown => ICON_WARNING.to_image(),
+            ChargeStatus::Charging => ICON_CHARGING.to_icon(),
+            ChargeStatus::Full => ICON_CHARGED.to_icon(),
+            ChargeStatus::Reverse =>  ICON_REVERSE.to_icon(),
+            ChargeStatus::Unknown => ICON_WARNING.to_icon(),
         };
         let amount = match self.battery.status {
             ChargeStatus::Discharging => match level {
@@ -321,13 +348,13 @@ impl RendererImpl for State {
         if self.is_resistance_or_watts_dirty {
             self.draw_resistance_and_watt(display);
         }
-        if self.is_statusbar_dirty && self.is_work() {
+        if self.is_statusbar_dirty && self.mode.is_work() {
             self.draw_statusbar(display);
         }
-        if self.is_status_dirty && !self.is_work() && !self.is_brightness() {
+        if self.is_status_dirty && self.mode.is_puffs() {
             self.draw_status(display);
         }
-        if self.is_brightness_dirty && self.is_brightness() {
+        if self.is_brightness_dirty && self.mode.is_settings() {
             self.draw_brightness(display);
         }
         self.are_buttons_dirty = false;

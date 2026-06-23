@@ -34,7 +34,7 @@ use vape::games::life::life::draw_life;
 use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
+use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, PUFF_THRESHOLD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -208,7 +208,7 @@ fn handle_pressed(
     right_pressed: bool,
     now: Time,
 ) {
-    if !state.is_work() && (state.buttons.left ^ state.buttons.right) && left_pressed && right_pressed {
+    if !state.mode.is_work() && (state.buttons.left ^ state.buttons.right) && left_pressed && right_pressed {
         revert_last(state);
         state.reset_mode();
     }
@@ -221,6 +221,7 @@ fn handle_pressed(
         _ if state.buttons(left_pressed, right_pressed) => (),
         _ if state.buttons.left || state.buttons.right => (),
         _ if left_pressed == right_pressed => (),
+        Mode::Tabs(..) => state.next_tab(),
         Mode::Power if left_pressed => state.dec_power(),
         Mode::Power if right_pressed => state.inc_power(),
         Mode::Limit if left_pressed => state.dec_limit(),
