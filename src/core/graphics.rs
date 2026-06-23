@@ -1,4 +1,4 @@
-use crate::core::icons::{ICON_TAB_PUFFS, ICON_TAB_PUFFS_SELECTED, ICON_TAB_SETTINGS, ICON_TAB_SETTINGS_SELECTED};
+use crate::core::icons::{ICON_TAB_BATTERY, ICON_TAB_BATTERY_SELECTED, ICON_TAB_PUFFS, ICON_TAB_PUFFS_SELECTED, ICON_TAB_SETTINGS, ICON_TAB_SETTINGS_SELECTED};
 use crate::core::tab::{TabView, TabViewSelector};
 use crate::types::{FigureStyle, StyledLine, TextStyle};
 use crate::values::{HEADER_OFFSET, HEADER_WIDTH};
@@ -15,8 +15,8 @@ pub const RADIUS: u32 = AREA / 2;
 pub const RADIUS_MINI: u32 = RADIUS / 2;
 pub const OFFSET: i32 = 2;
 pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
-const TAB_SPACING: u32 = 2;
-const TAB_COUNT: u32 = 2;
+const TAB_SPACING: u32 = 1;
+const TAB_COUNT: u32 = 3;
 const TAB_WIDTH: u32 = (HEADER_WIDTH + TAB_SPACING) / TAB_COUNT - TAB_SPACING;
 const HEADER_SPACE: i32 = 4;
 
@@ -46,6 +46,12 @@ pub const FIRST_TAB_CORNER_RADII: CornerRadii = CornerRadii {
     bottom_right: CORNER_MINI,
     bottom_left: CORNER,
 };
+pub const MIDDLE_TAB_CORNER_RADII: CornerRadii = CornerRadii {
+    top_left: CORNER_MINI,
+    top_right: CORNER_MINI,
+    bottom_right: CORNER_MINI,
+    bottom_left: CORNER_MINI,
+};
 pub const LAST_TAB_CORNER_RADII: CornerRadii = CornerRadii {
     top_left: CORNER_MINI,
     top_right: CORNER,
@@ -55,7 +61,8 @@ pub const LAST_TAB_CORNER_RADII: CornerRadii = CornerRadii {
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
 pub const TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(Point::new(0, 0), Size::new(TAB_WIDTH, AREA)), CORNER_RADII);
 pub const FIRST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), FIRST_TAB_CORNER_RADII);
-pub const SECOND_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(SECOND_TAB_POINT, Size::new(TAB_WIDTH, AREA)), LAST_TAB_CORNER_RADII);
+pub const MIDDLE_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), MIDDLE_TAB_CORNER_RADII);
+pub const LAST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(SECOND_TAB_POINT, Size::new(TAB_WIDTH, AREA)), LAST_TAB_CORNER_RADII);
 pub const CATHODE: Line = Line::new(Point::new(0, 0), Point::new(0, 4));
 pub const BATTERY_CELL: RoundedRectangle = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)));
 
@@ -66,6 +73,10 @@ pub const TAB_SETTINGS: TabViewSelector = TabViewSelector {
 pub const TAB_PUFFS: TabViewSelector = TabViewSelector {
     normal: TabView::new(WHITE_STROKE, ICON_TAB_PUFFS),
     selected: TabView::new(WHITE_FILL, ICON_TAB_PUFFS_SELECTED),
+};
+pub const TAB_BATTERY: TabViewSelector = TabViewSelector {
+    normal: TabView::new(WHITE_STROKE, ICON_TAB_BATTERY),
+    selected: TabView::new(WHITE_FILL, ICON_TAB_BATTERY_SELECTED),
 };
 
 pub fn space(size: u32) -> StyledLine {

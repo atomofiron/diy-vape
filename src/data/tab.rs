@@ -2,4 +2,5 @@
 pub enum Tab {
     Settings,
     Puffs,
+    Battery,
 }

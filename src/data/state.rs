@@ -87,23 +87,40 @@ impl State {
         self.mode = mode;
         self.is_statusbar_dirty = self.mode.is_work();
         self.is_brightness_dirty = self.mode.is_settings();
+        self.is_status_dirty = self.mode.is_puffs() || self.mode.is_battery();
         self.mark_current_dirty();
     }
 
     pub fn next_tab(&mut self) {
-        let new = match self.mode {
-            Mode::Tabs(Tab::Settings) => Tab::Puffs,
-            Mode::Tabs(Tab::Puffs) => Tab::Settings,
+        let new = match &self.mode {
+            Mode::Tabs(tab) => match tab {
+                Tab::Settings => Tab::Puffs,
+                Tab::Puffs => Tab::Battery,
+                Tab::Battery => Tab::Settings,
+            },
             _ => return,
         };
         self.mode = Mode::Tabs(new);
-        self.is_header_dirty = true;
+        self.mark_current_dirty();
+    }
+
+    pub fn prev_tab(&mut self) {
+        let new = match &self.mode {
+            Mode::Tabs(tab) => match tab {
+                Tab::Settings => Tab::Battery,
+                Tab::Puffs => Tab::Settings,
+                Tab::Battery => Tab::Puffs,
+            },
+            _ => return,
+        };
+        self.mode = Mode::Tabs(new);
+        self.mark_current_dirty();
     }
 
     fn mark_current_dirty(&mut self) {
         match self.mode {
             Mode::Work { .. } => self.is_statusbar_dirty = true,
-            Mode::Tabs(..) => (),
+            Mode::Tabs(..) => self.mark_all_dirty(),
             Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
             Mode::Resistance => self.is_resistance_or_watts_dirty = true,
             Mode::Brightness => self.is_brightness_dirty = true,

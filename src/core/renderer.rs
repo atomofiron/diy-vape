@@ -1,6 +1,6 @@
 use crate::core::charge_status::ChargeStatus;
 use crate::core::cleaner::Cleaner;
-use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CATHODE, CORNER_RADII, FIRST_TAB_RECTANGLE, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, SECOND_TAB_RECTANGLE, TAB_MARGIN, TAB_PUFFS, TAB_SETTINGS, TEXT_ICON_MARGIN, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
+use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_BOLD_TEXT, BLACK_FILL, BLACK_TEXT, CATHODE, CORNER_RADII, FIRST_TAB_RECTANGLE, HEADER_POINT, HEADER_RECTANGLE, HEADER_SIZE, LAST_TAB_RECTANGLE, MIDDLE_TAB_RECTANGLE, TAB_BATTERY, TAB_MARGIN, TAB_PUFFS, TAB_SETTINGS, TEXT_ICON_MARGIN, WHITE_FILL, WHITE_STROKE, WHITE_TEXT};
 use crate::core::graphics::{AREA, OFFSET, RADIUS, VISUAL_BASELINE_14};
 use crate::core::icons::{BRIGHTNESS_ICON_SIZE, ICON_PUFF, ICON_VOLTAGE, MOON_FILL, MOON_STROKE, SUN_FILL, SUN_STROKE};
 use crate::core::icons::{ICON_CHARGED, ICON_CHARGING, ICON_CROSS, ICON_EMPTY, ICON_OHM, ICON_ONE, ICON_REVERSE, ICON_WARNING};
@@ -106,18 +106,28 @@ impl RendererImpl for State {
     fn draw_tabs(selected: &Tab, display: &mut Display) {
         display.clear_header(false);
         let display_area = display.bounding_box();
-        
+
         let view = TAB_SETTINGS.peek(*selected == Tab::Settings);
         let tab = FIRST_TAB_RECTANGLE.into_styled(view.background);
-        let icon = view.icon.to_icon().align_to(&tab, horizontal::Center, vertical::Center);
+        let icon = view.icon.to_icon()
+            .align_to(&tab, horizontal::Center, vertical::Center)
+            .translate(Point::new(1, 0));
         let first = Chain::new(icon).append(tab);
 
         let view = TAB_PUFFS.peek(*selected == Tab::Puffs);
-        let tab = SECOND_TAB_RECTANGLE.into_styled(view.background);
-        let icon = view.icon.to_icon().align_to(&tab, horizontal::Center, vertical::Center);
-        let second = Chain::new(icon).append(tab);
+        let tab = MIDDLE_TAB_RECTANGLE.into_styled(view.background);
+        let icon = view.icon.to_icon()
+            .align_to(&tab, horizontal::Center, vertical::Center);
+        let middle = Chain::new(icon).append(tab);
 
-        LinearLayout::horizontal(Chain::new(first).append(second))
+        let view = TAB_BATTERY.peek(*selected == Tab::Battery);
+        let tab = LAST_TAB_RECTANGLE.into_styled(view.background);
+        let icon = view.icon.to_icon()
+            .align_to(&tab, horizontal::Center, vertical::Center)
+            .translate(Point::new(-1, 0));
+        let last = Chain::new(icon).append(tab);
+
+        LinearLayout::horizontal(Chain::new(first).append(middle).append(last))
             .with_spacing(TAB_MARGIN)
             .arrange()
             .align_to(&display_area, horizontal::Center, vertical::Top)
@@ -351,7 +361,7 @@ impl RendererImpl for State {
         if self.is_statusbar_dirty && self.mode.is_work() {
             self.draw_statusbar(display);
         }
-        if self.is_status_dirty && self.mode.is_puffs() {
+        if self.is_status_dirty && (self.mode.is_puffs() || self.mode.is_battery()) {
             self.draw_status(display);
         }
         if self.is_brightness_dirty && self.mode.is_settings() {

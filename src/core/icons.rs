@@ -95,6 +95,24 @@ pub const ICON_TAB_PUFFS: IconRaw = ImageRaw::<BinaryColor>::new(&PUFF_TAB_BYTES
 
 pub const ICON_TAB_PUFFS_SELECTED: IconRaw = ImageRaw::<BinaryColor>::new(&inverse(&PUFF_TAB_BYTES), 12);
 
+const BATTERY_TAB_BYTES: [u8; 24] = icon_bytes!("
+░░░░░█░░░░░░░
+░░░░░█░░░░░░░
+░░░░██░░░░░█░
+░░░░██░░░███░
+░░░████████░░
+░░░████████░░
+░░████████░░░
+░░████████░░░
+░███░░░██░░░░
+░█░░░░░██░░░░
+░░░░░░░█░░░░░
+░░░░░░░█░░░░░
+");
+pub const ICON_TAB_BATTERY: IconRaw = ImageRaw::<BinaryColor>::new(&BATTERY_TAB_BYTES, 12);
+
+pub const ICON_TAB_BATTERY_SELECTED: IconRaw = ImageRaw::<BinaryColor>::new(&inverse(&BATTERY_TAB_BYTES), 12);
+
 const PUFF_BYTES: [u8; 20] = icon_bytes!("
 ░░█░░█░░░
 ░█░░█░░░░

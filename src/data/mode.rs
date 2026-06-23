@@ -28,6 +28,7 @@ impl Mode {
             Self::Tabs(tab) => match tab {
                 Tab::Settings => Mode::Power,
                 Tab::Puffs => Mode::ResetCoil,
+                Tab::Battery => Mode::default(),
             }
             Self::Work { .. } => Mode::Tabs(Tab::Settings),
             Self::Power => Mode::Limit,
@@ -42,27 +43,28 @@ impl Mode {
 
     pub fn is_settings(&self) -> bool {
         match self {
-            Self::Tabs(tab) => *tab == Tab::Settings,
-            Self::Work { .. } |
-            Self::ResetCoil |
-            Self::ResetStats => false,
+            Self::Tabs(Tab::Settings) |
             Self::Power |
             Self::Limit |
             Self::Resistance |
             Self::Brightness => true,
+            _ => false,
         }
     }
 
     pub fn is_puffs(&self) -> bool {
         match self {
-            Self::Tabs(tab) => *tab == Tab::Puffs,
-            Self::Work { .. } |
-            Self::Power |
-            Self::Limit |
-            Self::Resistance |
-            Self::Brightness => false,
+            Self::Tabs(Tab::Puffs) |
             Self::ResetCoil |
             Self::ResetStats => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_battery(&self) -> bool {
+        match self {
+            Self::Tabs(Tab::Battery) => true,
+            _ => false,
         }
     }
 
