@@ -19,26 +19,26 @@ pub enum Mode {
 
 impl Mode {
 
-    pub fn next(&self) -> Mode {
+    pub fn next(&self) -> Self {
         match self {
-            Self::Work { .. } => Mode::settings(),
-            Self::Settings(EditSettings::None) => Mode::Settings(EditSettings::Power),
-            Self::Settings(EditSettings::Power) => Mode::Settings(EditSettings::Limit),
-            Self::Settings(EditSettings::Limit) => Mode::Settings(EditSettings::Resistance),
-            Self::Settings(EditSettings::Resistance) => Mode::Settings(EditSettings::Brightness),
-            Self::Settings(EditSettings::Brightness) => Mode::default(),
-            Self::Puffs(ResetPuffs::None) => Mode::Puffs(ResetPuffs::Coil),
-            Self::Puffs(ResetPuffs::Coil) => Mode::Puffs(ResetPuffs::All),
-            Self::Puffs(ResetPuffs::All) => Mode::default(),
-            Self::Battery => Mode::default(),
+            Self::Work { .. } => Self::settings(),
+            Self::Settings(EditSettings::None) => Self::Settings(EditSettings::Power),
+            Self::Settings(EditSettings::Power) => Self::Settings(EditSettings::Limit),
+            Self::Settings(EditSettings::Limit) => Self::Settings(EditSettings::Resistance),
+            Self::Settings(EditSettings::Resistance) => Self::Settings(EditSettings::Brightness),
+            Self::Settings(EditSettings::Brightness) => Self::settings(),
+            Self::Puffs(ResetPuffs::None) => Self::Puffs(ResetPuffs::Coil),
+            Self::Puffs(ResetPuffs::Coil) => Self::Puffs(ResetPuffs::All),
+            Self::Puffs(ResetPuffs::All) => Self::puffs(),
+            Self::Battery => Self::default(),
         }
     }
 
-    pub fn settings() -> Mode {
+    pub fn settings() -> Self {
         Self::Settings(EditSettings::None)
     }
 
-    pub fn puffs() -> Mode {
+    pub fn puffs() -> Self {
         Self::Puffs(ResetPuffs::None)
     }
 }

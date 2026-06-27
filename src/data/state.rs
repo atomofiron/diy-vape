@@ -4,7 +4,9 @@ use crate::data::action::Action;
 use crate::data::battery::Battery;
 use crate::data::buttons::Buttons;
 use crate::data::config::Config;
+use crate::data::edit_settings::EditSettings;
 use crate::data::mode::Mode;
+use crate::data::reset_puffs::ResetPuffs;
 use crate::data::stats::Stats;
 use crate::types::{DeciSecond, Duty, MilliVolt, Percent, Progress, Time};
 use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, PROGRESS_MAX, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
@@ -23,6 +25,7 @@ pub struct State {
     pub puff_trigger: bool, // true = counted
 
     pub ui: Ui,
+    pub tabs_to_work: bool,
 }
 
 impl State {
@@ -41,6 +44,7 @@ impl State {
             puff_trigger: false,
 
             ui: Ui::default(),
+            tabs_to_work: false,
         }
     }
 
@@ -63,6 +67,15 @@ impl State {
     }
 
     pub fn next_mode(&mut self) {
+        match self.mode {
+            Mode::Work { .. } => self.tabs_to_work = false,
+            Mode::Settings(EditSettings::None) |
+            Mode::Puffs(ResetPuffs::None) => match self.tabs_to_work {
+                true => return self.reset_mode(),
+                false => self.tabs_to_work = true,
+            }
+            _ => (),
+        }
         self.mode = self.mode.next();
     }
 
@@ -77,6 +90,7 @@ impl State {
             Mode::Battery => if next { Mode::settings() } else { Mode::puffs() },
             Mode::Work { .. } => return,
         };
+        self.tabs_to_work = false;
     }
 
     pub fn set_work_duration(
