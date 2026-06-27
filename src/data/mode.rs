@@ -1,82 +1,45 @@
-use crate::data::tab::Tab;
+use crate::data::edit_settings::EditSettings;
+use crate::data::reset_puffs::ResetPuffs;
 use crate::types::{Duty, Time};
+use strum::EnumIs;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, EnumIs)]
 pub enum Mode {
     Work {
         duration: Time,
         prev: Time,
         cool_down: bool,
         start: Option<Time>, // (start == Some) == Adc.measuring
-        duty: Option<Duty>, // (duty == Some) != (start == Some)
+        duty: Option<Duty>, // (duty == Some) != (start == Some), i.e. measurement completed
     },
-    Tabs(Tab), // selected
-
-    Power,
-    Limit,
-    Resistance,
-    Brightness,
-
-    ResetCoil,
-    ResetStats,
+    Settings(EditSettings),
+    Puffs(ResetPuffs),
+    Battery,
 }
 
 impl Mode {
 
     pub fn next(&self) -> Mode {
         match self {
-            Self::Tabs(tab) => match tab {
-                Tab::Settings => Mode::Power,
-                Tab::Puffs => Mode::ResetCoil,
-                Tab::Battery => Mode::default(),
-            }
-            Self::Work { .. } => Mode::Tabs(Tab::Settings),
-            Self::Power => Mode::Limit,
-            Self::Limit => Mode::Resistance,
-            Self::Resistance => Mode::Brightness,
-            Self::Brightness => Mode::default(),
-
-            Self::ResetCoil => Self::ResetStats,
-            Self::ResetStats => Mode::default(),
+            Self::Work { .. } => Mode::settings(),
+            Self::Settings(EditSettings::None) => Mode::Settings(EditSettings::Power),
+            Self::Settings(EditSettings::Power) => Mode::Settings(EditSettings::Limit),
+            Self::Settings(EditSettings::Limit) => Mode::Settings(EditSettings::Resistance),
+            Self::Settings(EditSettings::Resistance) => Mode::Settings(EditSettings::Brightness),
+            Self::Settings(EditSettings::Brightness) => Mode::default(),
+            Self::Puffs(ResetPuffs::None) => Mode::Puffs(ResetPuffs::Coil),
+            Self::Puffs(ResetPuffs::Coil) => Mode::Puffs(ResetPuffs::All),
+            Self::Puffs(ResetPuffs::All) => Mode::default(),
+            Self::Battery => Mode::default(),
         }
     }
 
-    pub fn is_settings(&self) -> bool {
-        match self {
-            Self::Tabs(Tab::Settings) |
-            Self::Power |
-            Self::Limit |
-            Self::Resistance |
-            Self::Brightness => true,
-            _ => false,
-        }
+    pub fn settings() -> Mode {
+        Self::Settings(EditSettings::None)
     }
 
-    pub fn is_puffs(&self) -> bool {
-        match self {
-            Self::Tabs(Tab::Puffs) |
-            Self::ResetCoil |
-            Self::ResetStats => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_battery(&self) -> bool {
-        match self {
-            Self::Tabs(Tab::Battery) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_work(&self) -> bool {
-        match self {
-            Mode::Work { .. } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_brightness(&self) -> bool {
-        *self == Mode::Brightness
+    pub fn puffs() -> Mode {
+        Self::Puffs(ResetPuffs::None)
     }
 }
 

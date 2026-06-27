@@ -1,12 +1,12 @@
-use crate::flash::savable::Savable;
-use crate::types::DeciSecond;
+use crate::flash::savable::{FlashKey, Savable};
+use crate::types::{DeciSecond, PuffCount};
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, MaxSize, Clone, Debug, PartialEq)]
 pub struct Stats {
     pub total: DeciSecond,
-    pub count: u32,
+    pub count: PuffCount,
 }
 
 impl Default for Stats {
@@ -16,5 +16,5 @@ impl Default for Stats {
 }
 
 impl Savable for Stats {
-    const FLASH_KEY: u8 = 2;
+    const FLASH_KEY: FlashKey = 2;
 }

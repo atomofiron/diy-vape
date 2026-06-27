@@ -1,5 +1,6 @@
 use crate::ext::error::ErrorMessage;
 use crate::flash::flash::AsyncFlash;
+use crate::flash::savable::FlashKey;
 use embedded_graphics::image::{Image, ImageRaw};
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -21,12 +22,13 @@ pub type StyledLine = Styled<Line, FigureStyle>;
 
 pub type Rslt<T> = Result<T, ErrorMessage>;
 pub type Display = Ssd1306<I2CInterface<Twim<TWIM0>>, DisplaySize128x64, BufferedGraphicsMode<DisplaySize128x64>>;
-pub type Storage = MapStorage<u8, AsyncFlash, NoCache>;
+pub type Storage = MapStorage<FlashKey, AsyncFlash, NoCache>;
 pub type PinIn<M> = Pin<Input<M>>;
 pub type PinOut<M> = Pin<Output<M>>;
 pub type DeciOhm = u8;
 pub type Ohm = f32;
 pub type Second = u8;
+pub type PuffCount = u32;
 pub type DeciSecond = u32;
 pub type MilliSecond = u64;
 pub type MilliWatt = u32;

@@ -10,10 +10,9 @@ use embedded_graphics::prelude::{Primitive, Size};
 use embedded_graphics::primitives::{CornerRadii, Line, PrimitiveStyle, Rectangle, RoundedRectangle};
 use embedded_layout::layout::linear::FixedMargin;
 
-pub const AREA: u32 = 16;
-pub const RADIUS: u32 = AREA / 2;
+pub const HEADER_HEIGHT: u32 = 16;
+pub const RADIUS: u32 = HEADER_HEIGHT / 2;
 pub const RADIUS_MINI: u32 = RADIUS / 2;
-pub const OFFSET: i32 = 2;
 pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
 const TAB_SPACING: u32 = 1;
 const TAB_COUNT: u32 = 3;
@@ -31,12 +30,13 @@ const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::O
 pub const BATTERY_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
 
 pub const TAB_MARGIN: FixedMargin = FixedMargin(TAB_SPACING as i32);
-pub const TEXT_ICON_MARGIN: FixedMargin = FixedMargin(2);
+pub const TEXT_ICON_MARGIN: FixedMargin = FixedMargin(4);
 
+pub const ZERO_POINT: Point = Point::new(0, 0);
 pub const HEADER_POINT: Point = Point::new(HEADER_OFFSET, 0);
 pub const FIRST_TAB_POINT: Point = Point::new(HEADER_OFFSET, 0);
 pub const SECOND_TAB_POINT: Point = Point::new(HEADER_OFFSET + TAB_WIDTH as i32 + HEADER_SPACE, 0);
-pub const HEADER_SIZE: Size = Size::new(HEADER_WIDTH, AREA);
+pub const HEADER_SIZE: Size = Size::new(HEADER_WIDTH, HEADER_HEIGHT);
 const CORNER: Size = Size::new(RADIUS, RADIUS);
 const CORNER_MINI: Size = Size::new(RADIUS_MINI, RADIUS_MINI);
 pub const CORNER_RADII: CornerRadii = CornerRadii::new(Size::new(RADIUS, RADIUS));
@@ -59,10 +59,10 @@ pub const LAST_TAB_CORNER_RADII: CornerRadii = CornerRadii {
     bottom_left: CORNER_MINI,
 };
 pub const HEADER_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(HEADER_POINT, HEADER_SIZE), CORNER_RADII);
-pub const FIRST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), FIRST_TAB_CORNER_RADII);
-pub const MIDDLE_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, AREA)), MIDDLE_TAB_CORNER_RADII);
-pub const LAST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(SECOND_TAB_POINT, Size::new(TAB_WIDTH, AREA)), LAST_TAB_CORNER_RADII);
-pub const CATHODE: Line = Line::new(Point::new(0, 0), Point::new(0, 4));
+pub const FIRST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, HEADER_HEIGHT)), FIRST_TAB_CORNER_RADII);
+pub const MIDDLE_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(FIRST_TAB_POINT, Size::new(TAB_WIDTH, HEADER_HEIGHT)), MIDDLE_TAB_CORNER_RADII);
+pub const LAST_TAB_RECTANGLE: RoundedRectangle = RoundedRectangle::new(Rectangle::new(SECOND_TAB_POINT, Size::new(TAB_WIDTH, HEADER_HEIGHT)), LAST_TAB_CORNER_RADII);
+pub const CATHODE: Line = Line::new(ZERO_POINT, Point::new(0, 4));
 pub const BATTERY_CELL: RoundedRectangle = RoundedRectangle::new(Rectangle::new(Point::new(0, 3), Size::new(21, 13)), CornerRadii::new(Size::new(4, 4)));
 
 pub const TAB_SETTINGS: TabViewSelector = TabViewSelector {
@@ -79,6 +79,6 @@ pub const TAB_BATTERY: TabViewSelector = TabViewSelector {
 };
 
 pub fn space(size: u32) -> StyledLine {
-    Line::new(Point::new(0, 0), Point::new(size as i32 - 1, 0))
+    Line::new(ZERO_POINT, Point::new(size as i32 - 1, 0))
         .into_styled(INVISIBLE_STROKE)
 }

@@ -7,12 +7,12 @@ use sequential_storage::Error;
 #[allow(async_fn_in_trait)]
 pub trait FlashStorage {
 
-    async fn read<T : Savable>(
+    async fn read<T: Savable>(
         &mut self,
         buffer: &mut [u8],
     ) -> Result<Option<T>, Error<NvmcError>>;
 
-    async fn save<T : Savable>(
+    async fn save<T: Savable>(
         &mut self,
         buffer: &mut [u8],
         data: T,
@@ -21,7 +21,7 @@ pub trait FlashStorage {
 
 impl FlashStorage for Storage {
 
-    async fn read<T : Savable>(
+    async fn read<T: Savable>(
         &mut self,
         buffer: &mut [u8],
     ) -> Result<Option<T>, Error<NvmcError>> {
@@ -29,7 +29,7 @@ impl FlashStorage for Storage {
             .await.map_value()
     }
 
-    async fn save<T : Savable>(
+    async fn save<T: Savable>(
         &mut self,
         buffer: &mut [u8],
         data: T,
@@ -39,11 +39,11 @@ impl FlashStorage for Storage {
     }
 }
 
-trait FlashValueResult<T : Savable> {
+trait FlashValueResult<T: Savable> {
     fn map_value(self) -> Result<Option<T>, Error<NvmcError>>;
 }
 
-impl<T : Savable> FlashValueResult<T> for Result<Option<FlashValue<T>>, Error<NvmcError>> {
+impl<T: Savable> FlashValueResult<T> for Result<Option<FlashValue<T>>, Error<NvmcError>> {
     fn map_value(self) -> Result<Option<T>, Error<NvmcError>> {
         self.map(|it| it.map(|it| it.0))
     }

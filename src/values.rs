@@ -22,7 +22,7 @@ pub const BATTERY_PERIOD: MilliSecond = 60000;
 pub const SCREENSAVER_TIMEOUT: MilliSecond = 30000;
 pub const IDLE_PERIOD: MilliSecond = 10;
 pub const SLEEP_PERIOD: MilliSecond = 1000;
-pub const VOLTS_MAX: MilliVolt = 4200;
+pub const VOLTS_FULL: MilliVolt = 4200;
 pub const VOLTS_MIN: MilliVolt = 3500;
 pub const MW: MilliWatt = 1000;
 

@@ -1,13 +1,14 @@
 use crate::core::charge_status::ChargeStatus;
+use crate::core::ui::Ui;
 use crate::data::action::Action;
 use crate::data::battery::Battery;
 use crate::data::buttons::Buttons;
 use crate::data::config::Config;
 use crate::data::mode::Mode;
 use crate::data::stats::Stats;
-use crate::data::tab::Tab;
-use crate::types::{DeciSecond, Duty, MilliVolt, MilliWatt, Percent, Time};
-use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, MW, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
+use crate::types::{DeciSecond, Duty, MilliVolt, Percent, Progress, Time};
+use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, PROGRESS_MAX, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
+use core::cmp::min;
 
 pub struct State {
     pub mode: Mode,
@@ -21,13 +22,7 @@ pub struct State {
     pub puff_duration: Time,
     pub puff_trigger: bool, // true = counted
 
-    pub are_buttons_dirty: bool,
-    pub is_header_dirty: bool,
-    pub is_power_or_limit_dirty: bool,
-    pub is_resistance_or_watts_dirty: bool,
-    pub is_statusbar_dirty: bool,
-    pub is_status_dirty: bool,
-    pub is_brightness_dirty: bool,
+    pub ui: Ui,
 }
 
 impl State {
@@ -45,13 +40,7 @@ impl State {
             puff_duration: 0,
             puff_trigger: false,
 
-            are_buttons_dirty: true,
-            is_header_dirty: true,
-            is_power_or_limit_dirty: true,
-            is_resistance_or_watts_dirty: true,
-            is_statusbar_dirty: true,
-            is_status_dirty: false,
-            is_brightness_dirty: true,
+            ui: Ui::default(),
         }
     }
 
@@ -74,59 +63,20 @@ impl State {
     }
 
     pub fn next_mode(&mut self) {
-        self.set_mode(self.mode.next());
+        self.mode = self.mode.next();
     }
 
     pub fn reset_mode(&mut self) {
-        self.set_mode(Mode::default());
+        self.mode = Mode::default();
     }
 
-    pub fn set_mode(&mut self, mode: Mode) {
-        self.is_header_dirty = true;
-        self.mark_current_dirty();
-        self.mode = mode;
-        self.is_statusbar_dirty = self.mode.is_work();
-        self.is_brightness_dirty = self.mode.is_settings();
-        self.is_status_dirty = self.mode.is_puffs() || self.mode.is_battery();
-        self.mark_current_dirty();
-    }
-
-    pub fn next_tab(&mut self) {
-        let new = match &self.mode {
-            Mode::Tabs(tab) => match tab {
-                Tab::Settings => Tab::Puffs,
-                Tab::Puffs => Tab::Battery,
-                Tab::Battery => Tab::Settings,
-            },
-            _ => return,
+    pub fn switch_tab(&mut self, next: bool) {
+        self.mode = match &self.mode {
+            Mode::Settings(_) => if next { Mode::puffs() } else { Mode::Battery },
+            Mode::Puffs(_) => if next { Mode::Battery } else { Mode::settings() },
+            Mode::Battery => if next { Mode::settings() } else { Mode::puffs() },
+            Mode::Work { .. } => return,
         };
-        self.mode = Mode::Tabs(new);
-        self.mark_current_dirty();
-    }
-
-    pub fn prev_tab(&mut self) {
-        let new = match &self.mode {
-            Mode::Tabs(tab) => match tab {
-                Tab::Settings => Tab::Battery,
-                Tab::Puffs => Tab::Settings,
-                Tab::Battery => Tab::Puffs,
-            },
-            _ => return,
-        };
-        self.mode = Mode::Tabs(new);
-        self.mark_current_dirty();
-    }
-
-    fn mark_current_dirty(&mut self) {
-        match self.mode {
-            Mode::Work { .. } => self.is_statusbar_dirty = true,
-            Mode::Tabs(..) => self.mark_all_dirty(),
-            Mode::Power | Mode::Limit => self.is_power_or_limit_dirty = true,
-            Mode::Resistance => self.is_resistance_or_watts_dirty = true,
-            Mode::Brightness => self.is_brightness_dirty = true,
-            Mode::ResetCoil => (), // todo
-            Mode::ResetStats => (), // todo
-        }
     }
 
     pub fn set_work_duration(
@@ -137,14 +87,11 @@ impl State {
     ) {
         match &mut self.mode {
             Mode::Work { duration: d, prev: p, cool_down: c, .. } => {
-                if *d != duration {
-                    self.is_header_dirty = true;
-                }
                 *d = duration;
                 *p = prev;
                 *c = cool_down;
             }
-            _ => return,
+            _ => (),
         };
     }
 
@@ -158,7 +105,7 @@ impl State {
                 *s = start;
                 *d = duty;
             }
-            _ => return,
+            _ => (),
         };
     }
 
@@ -176,88 +123,61 @@ impl State {
         self.puff_duration = 0;
     }
 
-    pub fn inc_power(&mut self) {
-        let new = self.config.power.inc();
+    pub fn edit_power(&mut self, increment: bool) {
+        let new = match increment {
+            true => self.config.power.inc(),
+            false => self.config.power.dec(),
+        };
         if new != self.config.power {
             self.config.power = new;
-            self.is_power_or_limit_dirty = true;
-            self.is_resistance_or_watts_dirty = true;
-            self.is_header_dirty = true;
             self.last = Some(Action::Power(true));
         }
     }
 
-    pub fn dec_power(&mut self) {
-        let new = self.config.power.dec();
-        if new != self.config.power {
-            self.config.power = new;
-            self.is_power_or_limit_dirty = true;
-            self.is_resistance_or_watts_dirty = true;
-            self.is_header_dirty = true;
-            self.last = Some(Action::Power(false));
+    pub fn edit_limit(&mut self, increment: bool) {
+        let new = match self.config.limit {
+            limit if increment && limit < LIMIT_RANGE.end => limit + 1,
+            limit if !increment && limit > LIMIT_RANGE.start => limit - 1,
+            _ => return,
+        };
+        if new != self.config.limit {
+            self.config.limit = new;
+            self.last = Some(Action::Limit(increment));
         }
     }
 
-    pub fn inc_limit(&mut self) {
-        if self.config.limit < LIMIT_RANGE.end {
-            self.config.limit += 1;
-            self.is_power_or_limit_dirty = true;
-            self.last = Some(Action::Limit(true));
+    pub fn edit_resistance(&mut self, increment: bool) {
+        let new = match self.config.resistance {
+            resistance if increment && resistance < RESISTANCE_RANGE.end => resistance + 1,
+            resistance if !increment && resistance > RESISTANCE_RANGE.start => resistance - 1,
+            _ => return,
+        };
+        if new != self.config.resistance {
+            self.config.resistance = new;
+            self.last = Some(Action::Resistance(increment));
         }
     }
 
-    pub fn dec_limit(&mut self) {
-        if self.config.limit > LIMIT_RANGE.start {
-            self.config.limit -= 1;
-            self.is_power_or_limit_dirty = true;
-            self.last = Some(Action::Limit(false));
-        }
-    }
-
-    pub fn inc_resistance(&mut self) {
-        if self.config.resistance < RESISTANCE_RANGE.end {
-            self.config.resistance += 1;
-            self.is_resistance_or_watts_dirty = true;
-            self.last = Some(Action::Resistance(true));
-        }
-    }
-
-    pub fn dec_resistance(&mut self) {
-        if self.config.resistance > RESISTANCE_RANGE.start {
-            self.config.resistance -= 1;
-            self.is_resistance_or_watts_dirty = true;
-            self.last = Some(Action::Resistance(false));
-        }
-    }
-
-    pub fn inc_brightness(&mut self) {
-        if self.config.brightness < BRIGHTNESS_RANGE.end {
-            self.config.brightness += 1;
-            self.is_brightness_dirty = true;
-            self.last = Some(Action::Brightness(true));
-        }
-    }
-
-    pub fn dec_brightness(&mut self) {
-        if self.config.brightness > BRIGHTNESS_RANGE.start {
-            self.config.brightness -= 1;
-            self.is_brightness_dirty = true;
-            self.last = Some(Action::Brightness(false));
+    pub fn edit_brightness(&mut self, increment: bool) {
+        let new = match self.config.brightness {
+            brightness if increment && brightness < BRIGHTNESS_RANGE.end => brightness + 1,
+            brightness if !increment && brightness > BRIGHTNESS_RANGE.start => brightness - 1,
+            _ => return,
+        };
+        if new != self.config.brightness {
+            self.config.brightness = new;
+            self.last = Some(Action::Brightness(increment));
         }
     }
 
     pub fn set_load_mv(&mut self, mv: MilliVolt) {
-        if self.battery.load != Some(mv) {
-            self.battery.load = Some(mv);
-            self.is_resistance_or_watts_dirty = true;
-        }
+        self.battery.load = Some(mv);
     }
 
     pub fn set_charge_status(&mut self, charging: bool, full: bool, reverse: bool) -> bool {
         let status = ChargeStatus::pick(charging, full, reverse);
         if status != self.battery.status {
             self.battery.status = status;
-            self.is_statusbar_dirty = true;
             true
         } else {
             false
@@ -269,72 +189,37 @@ impl State {
     }
 
     pub fn set_battery_idle(&mut self, mv: Option<MilliVolt>) {
-        if mv != self.battery.idle {
-            self.battery.idle = mv;
-            self.is_statusbar_dirty = true;
-            self.is_resistance_or_watts_dirty = true;
-        }
-    }
-
-    pub fn watts(&self) -> Option<MilliWatt> {
-        let mut mw = self.config.milliwatts(self.battery.load?);
-        let percents = self.config.power.percents() as MilliWatt;
-        mw = mw * percents / 100;
-        let mut watts = mw / MW;
-        if (mw % MW) >= (MW / 2) {
-            watts += 1;
-        }
-        return Some(watts as MilliWatt)
+        self.battery.idle = mv;
     }
 
     pub fn set_pressed(&mut self, left: bool, right: bool) {
-        if !self.buttons(left, right) {
-            self.are_buttons_dirty = true;
-            self.buttons.left = left;
-            self.buttons.right = right;
-        }
+        self.buttons.left = left;
+        self.buttons.right = right;
     }
 
-    pub fn update_max_mv(&mut self) {
-        let max = match self.battery.idle {
+    pub fn update_full_mv(&mut self) {
+        let full = match self.battery.idle {
             Some(idle) => idle,
             None => return,
         };
-        if max != self.config.battery_max {
-            self.config.battery_max = max;
-            self.is_statusbar_dirty = true;
-        }
+        self.config.battery_full = full;
     }
 
     pub fn get_battery_level(&mut self) -> Option<Percent> {
-        let max = self.config.battery_max;
+        let full = self.config.battery_full;
         let now = self.battery.idle?;
-        let percents = (now - VOLTS_MIN) as u32 * 100 / (max - VOLTS_MIN) as u32;
+        let percents = (now - VOLTS_MIN) as u32 * 100 / (full - VOLTS_MIN) as u32;
         return Some(percents.clamp(0, 100) as Percent)
-    }
-
-    pub fn is_smth_dirty(&self) -> bool {
-        self.are_buttons_dirty
-            || self.is_header_dirty
-            || self.is_power_or_limit_dirty
-            || self.is_resistance_or_watts_dirty
-            || self.is_status_dirty
-            || self.is_brightness_dirty
-            || self.is_statusbar_dirty
-    }
-
-    pub fn mark_all_dirty(&mut self) {
-        self.are_buttons_dirty = true;
-        self.is_header_dirty = true;
-        self.is_power_or_limit_dirty = true;
-        self.is_resistance_or_watts_dirty = true;
-        self.is_status_dirty = true;
-        self.is_statusbar_dirty = true;
-        self.is_brightness_dirty = true;
     }
 
     pub fn limit_ms(&self) -> Time {
         self.config.limit as Time * SECOND
+    }
+
+    pub fn progress(&self, duration: Time) -> Progress {
+        let limit = self.limit_ms();
+        let max = PROGRESS_MAX as Time;
+        return min(duration * max / limit, max) as Progress
     }
 }
 

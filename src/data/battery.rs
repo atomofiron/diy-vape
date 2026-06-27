@@ -1,10 +1,12 @@
 use crate::core::charge_status::ChargeStatus;
 use crate::types::MilliVolt;
 
+#[derive(Clone, PartialEq)]
 pub struct Battery {
-    pub status: ChargeStatus, // 4056H
+    pub status: ChargeStatus,
     pub idle: Option<MilliVolt>,
     pub load: Option<MilliVolt>,
+    pub full: Option<MilliVolt>,
 }
 
 impl Default for Battery {
@@ -14,6 +16,7 @@ impl Default for Battery {
             status: ChargeStatus::default(),
             idle: None,
             load: None,
+            full: None,
         }
     }
 }

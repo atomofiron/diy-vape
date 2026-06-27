@@ -1,5 +1,5 @@
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ChargeStatus {
     Discharging, // ''
     Charging, // '⚡'
