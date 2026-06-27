@@ -35,8 +35,10 @@ macro_rules! icon_bytes {
             } else if byte == WHITE {
                 out[index] |= 1 << offset;
             } else if byte == LF {
-                index += 1;
-                offset = 7;
+                if offset != 7 {
+                    index += 1;
+                    offset = 7;
+                }
                 continue
             } else {
                 continue
