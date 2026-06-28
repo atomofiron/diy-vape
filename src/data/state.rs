@@ -115,7 +115,7 @@ impl State {
 
     pub fn calc_puff_duration(&self) -> DeciSecond {
         let mut duration = (self.puff_duration / DECI_SECOND) as DeciSecond;
-        let part = self.puff_duration & DECI_SECOND;
+        let part = self.puff_duration % DECI_SECOND;
         if part >= DECI_SECOND / 2 {
             duration += 1
         };
