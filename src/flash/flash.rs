@@ -64,3 +64,6 @@ impl async_nf::ReadNorFlash for AsyncFlash {
         self.0.capacity()
     }
 }
+
+impl async_nf::MultiwriteNorFlash for AsyncFlash {
+}

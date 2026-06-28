@@ -17,6 +17,11 @@ pub trait FlashStorage {
         buffer: &mut [u8],
         data: T,
     ) -> Result<(), Error<NvmcError>>;
+
+    async fn remove<T: Savable>(
+        &mut self,
+        buffer: &mut [u8],
+    ) -> Result<(), Error<NvmcError>>;
 }
 
 impl FlashStorage for Storage {
@@ -35,6 +40,14 @@ impl FlashStorage for Storage {
         data: T,
     ) -> Result<(), Error<NvmcError>> {
         self.store_item(buffer, &T::FLASH_KEY, &FlashValue(data))
+            .await
+    }
+
+    async fn remove<T: Savable>(
+        &mut self,
+        buffer: &mut [u8],
+    ) -> Result<(), Error<NvmcError>> {
+        self.remove_item(buffer, &T::FLASH_KEY)
             .await
     }
 }
