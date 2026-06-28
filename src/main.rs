@@ -131,7 +131,7 @@ async fn bustle() -> ! {
 
     green.blink();
 
-    let mut was_touched = false;
+    let mut is_display_on = true;
     let mut last_interaction = timer.now();
     loop {
         let touched = touch.is_high().unwrap_or(false);
@@ -139,7 +139,7 @@ async fn bustle() -> ! {
         let right_pressed = right_btn.is_low().unwrap_or(false);
         if !was_touched && touched {
             green.on();
-            if state.is_display_on && !left_pressed && !right_pressed {
+            if is_display_on && !left_pressed && !right_pressed {
                 state.next_mode();
             }
         } else if was_touched && !touched {
@@ -154,9 +154,13 @@ async fn bustle() -> ! {
         if interaction {
             last_interaction = now;
         }
-        if !state.is_display_on {
+        if !is_display_on {
             match interaction {
-                true => set_display(&mut state, &mut display, true),
+                true => {
+                    is_display_on = true;
+                    display.set_display_on(true)
+                        .ignore()
+                },
                 false => timer.sleep_ms(SLEEP_PERIOD as u32)
                     .unwrap_or_else(|_| red.blink()),
             }
@@ -188,9 +192,11 @@ async fn bustle() -> ! {
             last_interaction = now;
             update_battery(&mut state, &mut adc, &mut blue, now);
             state.render(&mut display);
-        } else {
+        } else if is_display_on {
             state.reset_mode();
-            set_display(&mut state, &mut display, false);
+            is_display_on = false;
+            display.set_display_on(false)
+                .ignore();
         }
         if state.config != config {
             config = state.config.clone();
@@ -327,18 +333,6 @@ fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, dura
         state.puff_trigger = true;
     } else if state.puff_trigger && duration == 0 {
         state.puff_trigger = false;
-    }
-}
-
-fn set_display(
-    state: &mut State,
-    display: &mut Display,
-    on: bool,
-) {
-    if on != state.is_display_on {
-        state.is_display_on = on;
-        display.set_display_on(on)
-            .ignore();
     }
 }
 

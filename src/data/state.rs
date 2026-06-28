@@ -19,7 +19,6 @@ pub struct State {
     pub battery: Battery,
 
     pub buttons: Buttons,
-    pub is_display_on: bool,
     pub last: Option<Action>,
     pub puff_duration: Time,
     pub puff_trigger: bool, // true = counted
@@ -38,7 +37,6 @@ impl State {
             battery: Battery::default(),
 
             buttons: Buttons::default(),
-            is_display_on: true,
             last: None,
             puff_duration: 0,
             puff_trigger: false,
