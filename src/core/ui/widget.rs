@@ -14,7 +14,7 @@ use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::format;
 use crate::types::{Brightness, DeciOhm, DeciSecond, Display, IconRaw, MilliVolt, MilliWatt, Percent, PuffCount, Second};
-use crate::values::{MW, SCREEN_HEIGHT, SCREEN_WIDTH, VOLTS_FULL, VOLTS_MIN};
+use crate::values::{WATT, SCREEN_HEIGHT, SCREEN_WIDTH, VOLT, VOLTS_FULL, VOLTS_MIN};
 use embedded_graphics::geometry::{Dimensions, Point, Size};
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
@@ -263,7 +263,7 @@ impl Widget {
         display: &mut Display,
     ) {
         let volts = mv
-            .map(|mv| format!(12, "{label} {:.3}v", mv as f32 / 1000.0))
+            .map(|mv| format!(12, "{label} {:.3}v", mv as f32 / VOLT as f32))
             .unwrap_or_else(|| format!(12, "{label} -.---v"));
 
         Text::new(volts.as_str(), ZERO_POINT, WHITE_TEXT)
@@ -291,8 +291,8 @@ fn watts(
     let mut mw = mw?;
     let percents = power.percents() as MilliWatt;
     mw = mw * percents / 100;
-    let mut watts = mw / MW;
-    if (mw % MW) >= (MW / 2) {
+    let mut watts = mw / WATT;
+    if (mw % WATT) >= (WATT / 2) {
         watts += 1;
     }
     return Some(watts as u32)
