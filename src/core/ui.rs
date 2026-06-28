@@ -28,9 +28,6 @@ pub struct Ui {
 impl Ui {
 
     pub fn render(&self, old: &Ui, display: &mut Display) {
-        if self == old {
-            return
-        }
         let old_buttons = match old.header {
             Header::None => &Buttons::new(!self.buttons.left, !self.buttons.right),
             _ => &old.buttons,

@@ -49,7 +49,7 @@ impl Renderer for State {
                     ResetPuffs::All => Header::Title(RESET_ALL),
                 },
                 top: Widget::PuffCoil {
-                    duration: 0,
+                    duration: self.stats.coil,
                     reset: reset.is_coil() || reset.is_all(),
                 },
                 middle: Widget::PuffCount {
@@ -69,10 +69,10 @@ impl Renderer for State {
                 bottom: Widget::BatteryFull(self.battery.full),
             },
         };
-        //if new != self.ui {
+        if new != self.ui {
             new.render(&self.ui, display);
             self.ui = new;
-        //}
+        }
     }
 }
 
@@ -117,7 +117,7 @@ impl RendererImpl for State {
 
     fn render_statusbar(&self) -> Widget {
         Widget::Statusbar {
-            total: self.stats.total,
+            total: self.stats.total + self.calc_puff_duration(),
             battery: self.battery.clone(),
         }
     }

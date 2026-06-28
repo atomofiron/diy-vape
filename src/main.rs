@@ -328,7 +328,7 @@ fn calc_work_progress_and_duty_and_stats(
 
 fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, duration: Time) {
     if state.buttons.left && state.buttons.right && (!left_pressed || !right_pressed) {
-        state.commit_stat_total();
+        state.commit_puff_duration();
     }
     if !state.puff_trigger && duration > PUFF_THRESHOLD {
         state.stats.count += 1;

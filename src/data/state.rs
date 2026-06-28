@@ -113,17 +113,18 @@ impl State {
         };
     }
 
-    pub fn calc_stat_total(&mut self) -> DeciSecond {
+    pub fn calc_puff_duration(&self) -> DeciSecond {
         let mut duration = (self.puff_duration / DECI_SECOND) as DeciSecond;
         let part = self.puff_duration & DECI_SECOND;
         if part >= DECI_SECOND / 2 {
             duration += 1
         };
-        return self.stats.total + duration
+        return duration
     }
 
-    pub fn commit_stat_total(&mut self) {
-        self.stats.total = self.calc_stat_total();
+    pub fn commit_puff_duration(&mut self) {
+        self.stats.coil += self.calc_puff_duration();
+        self.stats.total += self.calc_puff_duration();
         self.puff_duration = 0;
     }
 

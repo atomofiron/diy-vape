@@ -3,16 +3,11 @@ use crate::types::{DeciSecond, PuffCount};
 use postcard::experimental::max_size::MaxSize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, MaxSize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, MaxSize, Default, Clone, Debug, PartialEq)]
 pub struct Stats {
+    pub coil: DeciSecond,
     pub total: DeciSecond,
     pub count: PuffCount,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Stats { total: 0, count: 0 }
-    }
 }
 
 impl Savable for Stats {
