@@ -128,6 +128,7 @@ async fn bustle() -> ! {
     );
     let mut rng = Rng::new(peripherals.RNG);
     let mut state = State::with(config.clone(), stats.clone());
+    apply_brightness(&state, &mut display);
 
     green.blink();
 
@@ -173,9 +174,7 @@ async fn bustle() -> ! {
         pwm.set_duty_off(Channel::C0, duty.unwrap_or(ZERO_DUTY));
 
         if let Some(Action::Brightness(..)) = state.last {
-            let brightness = Brightness::custom(DISPLAY_PRECHARGE, state.config.brightness());
-            display.set_brightness(brightness)
-                .ignore();
+            apply_brightness(&state, &mut display);
         }
         if touched || left_pressed || right_pressed || duty.is_some() || (now - last_interaction) < SCREENSAVER_TIMEOUT {
             state.render(&mut display);
@@ -334,6 +333,12 @@ fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, dura
     } else if state.puff_trigger && duration == 0 {
         state.puff_trigger = false;
     }
+}
+
+fn apply_brightness(state: &State, display: &mut Display) {
+    let brightness = Brightness::custom(DISPLAY_PRECHARGE, state.config.brightness());
+    display.set_brightness(brightness)
+        .ignore();
 }
 
 fn update_battery(
