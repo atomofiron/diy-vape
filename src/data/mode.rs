@@ -30,7 +30,7 @@ impl Mode {
             Self::Puffs(ResetPuffs::None) => Self::Puffs(ResetPuffs::Coil),
             Self::Puffs(ResetPuffs::Coil) => Self::Puffs(ResetPuffs::All),
             Self::Puffs(ResetPuffs::All) => Self::puffs(),
-            Self::Battery => Self::default(),
+            Self::Battery => Self::Battery,
         }
     }
 

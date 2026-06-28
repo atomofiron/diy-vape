@@ -38,7 +38,7 @@ use vape::games::life::life::draw_life;
 use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, PUFF_THRESHOLD, SCREENSAVER_TIMEOUT, SLEEP_PERIOD, VOLTS_FULL};
+use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, PUFF_THRESHOLD, SCREENSAVER_TIMEOUT, SECOND, SLEEP_PERIOD, VOLTS_FULL};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -138,22 +138,27 @@ async fn bustle() -> ! {
         let touched = touch.is_high().unwrap_or(false);
         let left_pressed = left_btn.is_low().unwrap_or(false);
         let right_pressed = right_btn.is_low().unwrap_or(false);
-        if !was_touched && touched {
+        if !state.touched() && touched {
             green.on();
             if is_display_on && !left_pressed && !right_pressed {
                 state.next_mode();
             }
-        } else if was_touched && !touched {
+        } else if state.touched() && !touched {
             green.off()
         }
-        let mut interaction = was_touched != touched;
+        let mut interaction = state.touched() != touched;
         interaction = interaction || !state.buttons(left_pressed, right_pressed);
         interaction = update_charging(&mut state, &mut charging) || interaction;
         interaction = adc.update_usb_connection() || interaction;
-        was_touched = touched;
-        let mut now = timer.now();
+        let now = timer.now();
         if interaction {
             last_interaction = now;
+        }
+        match state.touched {
+            None if touched => state.touched = Some(now),
+            Some(_) if !touched => state.touched = None,
+            Some(time) if now > (time + SECOND) => state.reset_mode(),
+            _ => (),
         }
         if !is_display_on {
             match interaction {
@@ -186,9 +191,7 @@ async fn bustle() -> ! {
             }
         } else if state.battery.status.is_powered() {
             state.reset_mode();
-            was_touched = screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
-            now = timer.now();
-            last_interaction = now;
+            screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             update_battery(&mut state, &mut adc, &mut blue, now);
             state.render(&mut display);
         } else if is_display_on {
@@ -384,7 +387,7 @@ fn screen_saver(
     right_btn: &mut PinIn<PullUp>,
     green: &mut PinOut<PushPull>,
     now: Time,
-) -> bool {
+) {
     let mut flag = true;
     let mut start = true;
     let mut touched = false;
@@ -412,5 +415,4 @@ fn screen_saver(
     green.off();
     display.set_addr_mode(AddrMode::Horizontal)
         .ignore();
-    return touched
 }
