@@ -1,5 +1,5 @@
 use crate::core::charge_status::ChargeStatus;
-use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_TEXT, CATHODE, TEXT_ICON_MARGIN, WHITE_FILL, WHITE_STROKE, WHITE_TEXT, ZERO_POINT};
+use crate::core::graphics::{space, BATTERY_CELL, BATTERY_TEXT, BLACK_TEXT, CATHODE, TEXT_ICON_PADDING, WHITE_FILL, WHITE_STROKE, WHITE_TEXT, ZERO_POINT};
 use crate::core::icons::{BRIGHTNESS_ICON_SIZE, ICON_BACKSPACE, ICON_COIL, ICON_PUFF, ICON_SUM, MOON_FILL, MOON_STROKE, SUN_FILL, SUN_STROKE};
 use crate::core::icons::{ICON_CHARGED, ICON_CHARGING, ICON_CROSS, ICON_EMPTY, ICON_OHM, ICON_ONE, ICON_REVERSE, ICON_WARNING};
 use crate::core::strings::{FULL, HARD, IDLE, LOAD, MEDIUM, RARE, WELL};
@@ -14,7 +14,7 @@ use crate::ext::str_ext::string;
 use crate::ext::text_ext::TextExt;
 use crate::format;
 use crate::types::{Brightness, DeciOhm, DeciSecond, Display, IconRaw, MilliVolt, MilliWatt, Percent, PuffCount, Second};
-use crate::values::{WATT, SCREEN_HEIGHT, SCREEN_WIDTH, VOLT, VOLTS_FULL, VOLTS_MIN};
+use crate::values::{SCREEN_HEIGHT, SCREEN_WIDTH, VOLT, VOLTS_FULL, VOLTS_MIN, WATT};
 use embedded_graphics::geometry::{Dimensions, Point, Size};
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
@@ -244,11 +244,12 @@ impl Widget {
         display: &mut Display,
     ) {
         let chain = Chain::new(icon.to_icon())
+            .append(space(TEXT_ICON_PADDING))
             .append(Text::new(text, ZERO_POINT, WHITE_TEXT))
+            .append(space(if reset { TEXT_ICON_PADDING } else { 0 }))
             .append(if reset { ICON_BACKSPACE.to_icon() } else { ICON_EMPTY.to_icon() });
 
         LinearLayout::horizontal(chain)
-            .with_spacing(TEXT_ICON_MARGIN)
             .with_alignment(vertical::Center)
             .arrange()
             .place_center(place, display)

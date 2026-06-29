@@ -1,4 +1,4 @@
-use crate::core::strings::{BRIGHTNESS, LIMIT, POWER_100, POWER_25, POWER_50, POWER_75, RESET_ALL, RESET_COIL, RESISTANCE};
+use crate::core::strings::{BRIGHTNESS, LIMIT, POWER_100, POWER_25, POWER_50, POWER_75, RESET_Q, RESISTANCE};
 use crate::core::ui::header::Header;
 use crate::core::ui::power_and_limit;
 use crate::core::ui::tab::Tab;
@@ -54,24 +54,24 @@ impl RendererImpl for State {
                 middle: self.render_resistance(),
                 bottom: self.render_brightness(),
             },
-            Mode::Puffs(reset) => Ui {
+            Mode::Puffs(reset, progress) => Ui {
                 buttons: self.buttons.clone(),
-                header: match reset {
-                    ResetPuffs::None => Header::Tabs(Tab::Puffs),
-                    ResetPuffs::Coil => Header::Title(RESET_COIL),
-                    ResetPuffs::All => Header::Title(RESET_ALL),
+                header: match (&reset, progress) {
+                    (_, Some(progress)) => Header::Progress(progress),
+                    (ResetPuffs::None, _) => Header::Tabs(Tab::Puffs),
+                    _ => Header::Title(RESET_Q),
                 },
                 top: Widget::PuffCoil {
                     duration: self.stats.coil,
-                    reset: reset.is_coil() || reset.is_all(),
+                    reset: reset.is_coil(),
                 },
                 middle: Widget::PuffCount {
                     count: self.stats.count,
-                    reset: reset.is_all(),
+                    reset: reset.is_count(),
                 },
                 bottom: Widget::PuffTotal {
                     duration: self.stats.total,
-                    reset: reset.is_all(),
+                    reset: reset.is_total(),
                 },
             },
             Mode::Battery => Ui {

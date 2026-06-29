@@ -35,10 +35,10 @@ use vape::flash::flash::AsyncFlash;
 use vape::flash::flash_storage::FlashStorage;
 use vape::flash::savable::Savable;
 use vape::games::life::life::draw_life;
-use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Time};
+use vape::types::{Display, Duty, MilliWatt, PinIn, PinOut, Progress, Time};
 use vape::util::blocking::blocking;
 use vape::util::logging::SoftUnwrap;
-use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, PUFF_THRESHOLD, SCREENSAVER_TIMEOUT, SECOND, SLEEP_PERIOD, VOLTS_FULL};
+use vape::values::{BATTERY_PERIOD, DISPLAY_PRECHARGE, IDLE_PERIOD, PROGRESS_MAX, PROGRESS_MIN, PUFF_THRESHOLD, RESET_PROGRESS_STEP, SCREENSAVER_TIMEOUT, SECOND, SLEEP_PERIOD, VOLTS_FULL};
 
 const ZERO_DUTY: Duty = 0;
 const TEST_DUTY: Duty = 0x4;
@@ -235,20 +235,21 @@ fn handle_pressed(
     if left_pressed == right_pressed {
         state.last = None
     }
-    match state.mode {
+    match state.mode.clone() {
         Mode::Work { duty, .. } if duty.is_none() && adc.fetch_usb_connection() => (),
         Mode::Work { duration, prev, cool_down, start, duty } => calc_work_progress_and_duty_and_stats(state, adc, left_pressed, right_pressed, now, duration, prev, cool_down, start, duty),
+        Mode::Puffs(reset, progress) if !reset.is_none() && (progress.is_some() || left_pressed != right_pressed) => handle_reset_puffs(state, left_pressed, right_pressed, reset, progress),
         _ if state.buttons(left_pressed, right_pressed) => (),
         _ if state.buttons.left || state.buttons.right => (),
         _ if left_pressed == right_pressed => (),
         Mode::Settings(EditSettings::None) |
-        Mode::Puffs(ResetPuffs::None) |
+        Mode::Puffs(ResetPuffs::None, ..) |
         Mode::Battery => state.switch_tab(right_pressed),
         Mode::Settings(EditSettings::Power) => state.edit_power(right_pressed),
         Mode::Settings(EditSettings::Limit) => state.edit_limit(right_pressed),
         Mode::Settings(EditSettings::Resistance) => state.edit_resistance(right_pressed),
         Mode::Settings(EditSettings::Brightness) => state.edit_brightness(right_pressed),
-        _ => (),
+        Mode::Puffs(..) => (), // unreachable
     }
     state.set_pressed(left_pressed, right_pressed);
 }
@@ -330,6 +331,30 @@ fn calc_work_progress_and_duty_and_stats(
             }
         },
     }
+}
+
+fn handle_reset_puffs(
+    state: &mut State,
+    left_pressed: bool,
+    right_pressed: bool,
+    mut reset: ResetPuffs,
+    mut progress: Option<Progress>,
+) {
+    progress = match progress {
+        _ if left_pressed == right_pressed => None,
+        Some(progress) if progress == PROGRESS_MAX => {
+            match reset {
+                ResetPuffs::None => return, // unreachable
+                ResetPuffs::Coil => state.stats.reset_coil(),
+                ResetPuffs::Count => state.stats.reset_count(),
+                ResetPuffs::Total => state.stats.reset_total(),
+            }
+            reset = ResetPuffs::None;
+            None
+        },
+        _ => Some(progress.unwrap_or(PROGRESS_MIN) + RESET_PROGRESS_STEP),
+    };
+    state.mode = Mode::Puffs(reset, progress);
 }
 
 fn commit_stats(state: &mut State, left_pressed: bool, right_pressed: bool, duration: Time) {

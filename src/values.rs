@@ -10,13 +10,14 @@ pub const BRIGHTNESS_RANGE: Range<Brightness> = 0..4;
 pub const BRIGHTNESS_RANGE_RAW: Range<Brightness> = 1..255;
 pub const DISPLAY_PRECHARGE: u8 = 1;
 
-pub const PROGRESS_STEP: Progress = 3;
 pub const PROGRESS_MIN: Progress = 0;
 pub const PROGRESS_MAX: Progress = 255;
+pub const PUFF_PROGRESS_STEP: Progress = 3;
+pub const RESET_PROGRESS_STEP: Progress = 15;
 pub const SECOND: Time = 1024;
 pub const DECI_SECOND: Time = 100;
 pub const PUFF_THRESHOLD: Time = SECOND / 2;
-pub const HEADER_WIDTH: u32 = (PROGRESS_MAX / PROGRESS_STEP) as u32 + 1;
+pub const HEADER_WIDTH: u32 = (PROGRESS_MAX / PUFF_PROGRESS_STEP) as u32 + 1;
 pub const HEADER_OFFSET: i32 = (SCREEN_WIDTH - HEADER_WIDTH) as i32 / 2;
 pub const BATTERY_PERIOD: MilliSecond = 60 * SECOND;
 pub const SCREENSAVER_TIMEOUT: MilliSecond = 30 * SECOND;

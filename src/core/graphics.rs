@@ -14,6 +14,7 @@ pub const HEADER_HEIGHT: u32 = 16;
 pub const RADIUS: u32 = HEADER_HEIGHT / 2;
 pub const RADIUS_MINI: u32 = RADIUS / 2;
 pub const VISUAL_BASELINE_14: i32 = FONT_7X14.baseline as i32 + 1;
+pub const TEXT_ICON_PADDING: u32 = 4;
 const TAB_SPACING: u32 = 1;
 const TAB_COUNT: u32 = 3;
 const TAB_WIDTH: u32 = (HEADER_WIDTH + TAB_SPACING) / TAB_COUNT - TAB_SPACING;
@@ -30,7 +31,7 @@ const INVISIBLE_STROKE: FigureStyle = PrimitiveStyle::with_stroke(BinaryColor::O
 pub const BATTERY_TEXT: TextStyle = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
 
 pub const TAB_MARGIN: FixedMargin = FixedMargin(TAB_SPACING as i32);
-pub const TEXT_ICON_MARGIN: FixedMargin = FixedMargin(4);
+pub const TEXT_ICON_MARGIN: FixedMargin = FixedMargin(TEXT_ICON_PADDING as i32);
 
 pub const ZERO_POINT: Point = Point::new(0, 0);
 pub const HEADER_POINT: Point = Point::new(HEADER_OFFSET, 0);

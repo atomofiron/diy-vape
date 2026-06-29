@@ -4,7 +4,9 @@ use crate::data::action::Action;
 use crate::data::battery::Battery;
 use crate::data::buttons::Buttons;
 use crate::data::config::Config;
+use crate::data::edit_settings::EditSettings;
 use crate::data::mode::Mode;
+use crate::data::reset_puffs::ResetPuffs;
 use crate::data::stats::Stats;
 use crate::types::{DeciSecond, Duty, MilliVolt, Percent, Progress, Time};
 use crate::values::{BRIGHTNESS_RANGE, DECI_SECOND, LIMIT_RANGE, PROGRESS_MAX, RESISTANCE_RANGE, SECOND, VOLTS_MIN};
@@ -67,7 +69,29 @@ impl State {
     }
 
     pub fn next_mode(&mut self) {
-        self.mode = self.mode.next();
+        self.mode = match &self.mode {
+            Mode::Work { .. } => Mode::settings(),
+            Mode::Settings(EditSettings::None) => Mode::Settings(EditSettings::Power),
+            Mode::Settings(EditSettings::Power) => Mode::Settings(EditSettings::Limit),
+            Mode::Settings(EditSettings::Limit) => Mode::Settings(EditSettings::Resistance),
+            Mode::Settings(EditSettings::Resistance) => Mode::Settings(EditSettings::Brightness,),
+            Mode::Settings(EditSettings::Brightness, ..) => Mode::settings(),
+            Mode::Puffs(reset, ..) => {
+                let mut reset = reset.clone();
+                loop {
+                    reset = reset.next();
+                    match reset {
+                        ResetPuffs::Coil if self.stats.coil > 0 => break,
+                        ResetPuffs::Count if self.stats.count > 0 => break,
+                        ResetPuffs::Total if self.stats.total > 0 => break,
+                        ResetPuffs::None => break,
+                        _ => continue,
+                    }
+                };
+                Mode::Puffs(reset, None)
+            },
+            Mode::Battery => Mode::Battery,
+        }
     }
 
     pub fn reset_mode(&mut self) {
@@ -76,8 +100,8 @@ impl State {
 
     pub fn switch_tab(&mut self, next: bool) {
         self.mode = match &self.mode {
-            Mode::Settings(_) => if next { Mode::puffs() } else { Mode::Battery },
-            Mode::Puffs(_) => if next { Mode::Battery } else { Mode::settings() },
+            Mode::Settings(..) => if next { Mode::puffs() } else { Mode::Battery },
+            Mode::Puffs(..) => if next { Mode::Battery } else { Mode::settings() },
             Mode::Battery => if next { Mode::settings() } else { Mode::puffs() },
             Mode::Work { .. } => return,
         };

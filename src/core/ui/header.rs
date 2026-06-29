@@ -5,7 +5,7 @@ use crate::ext::result_ext::ResultExt;
 use crate::ext::text_ext::TextExt;
 use crate::kopy;
 use crate::types::{Display, Progress};
-use crate::values::{HEADER_WIDTH, PROGRESS_STEP};
+use crate::values::{HEADER_WIDTH, PUFF_PROGRESS_STEP};
 use core::cmp::min;
 use embedded_graphics::geometry::{Dimensions, Point, Size};
 use embedded_graphics::prelude::Primitive;
@@ -39,7 +39,7 @@ impl Header {
     }
 
     fn draw_progress(progress: Progress, display: &mut Display) {
-        let progress = (progress / PROGRESS_STEP) as u32;
+        let progress = (progress / PUFF_PROGRESS_STEP) as u32;
         let fill_size = kopy!(HEADER_SIZE, width = min(progress + HEADER_HEIGHT, HEADER_WIDTH));
         let point = HEADER_POINT;
         RoundedRectangle::new(Rectangle::new(point, fill_size), CORNER_RADII)
