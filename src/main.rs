@@ -157,7 +157,13 @@ async fn bustle() -> ! {
         match state.touched {
             None if touched => state.touched = Some(now),
             Some(_) if !touched => state.touched = None,
-            Some(time) if now > (time + SECOND) => state.reset_mode(),
+            Some(time) if now > (time + SECOND * 2) => {
+                state.reset_mode();
+                screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut timer, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
+                state.force_render(&mut display);
+                continue
+            },
+            Some(time) if !state.mode.is_work() && now > (time + SECOND) => state.reset_mode(),
             _ => (),
         }
         if !is_display_on {
@@ -191,9 +197,9 @@ async fn bustle() -> ! {
             }
         } else if state.battery.status.is_powered() {
             state.reset_mode();
-            screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
+            screen_saver(&mut state, &mut display, &mut charging, &mut rng, &mut adc, &mut timer, &mut touch, &mut left_btn, &mut right_btn, &mut green, now);
             update_battery(&mut state, &mut adc, &mut blue, now);
-            state.render(&mut display);
+            state.force_render(&mut display);
         } else if is_display_on {
             state.reset_mode();
             is_display_on = false;
@@ -382,6 +388,7 @@ fn screen_saver(
     charging: &mut Charging,
     rng: &mut Rng,
     adc: &mut Adc,
+    timer: &mut Timer,
     touch: &mut PinIn<Floating>,
     left_btn: &mut PinIn<PullUp>,
     right_btn: &mut PinIn<PullUp>,
@@ -415,4 +422,8 @@ fn screen_saver(
     green.off();
     display.set_addr_mode(AddrMode::Horizontal)
         .ignore();
+    state.touched = match touched {
+        true => Some(timer.now()),
+        false => None,
+    };
 }

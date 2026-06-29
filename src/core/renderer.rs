@@ -13,9 +13,11 @@ use crate::types::Display;
 
 pub trait Renderer {
     fn render(&mut self, display: &mut Display);
+    fn force_render(&mut self, display: &mut Display);
 }
 
 trait RendererImpl {
+    fn render_and_draw(&mut self, forced: bool, display: &mut Display);
     fn settings_header(&self, edit: EditSettings) -> Header;
     fn render_power(&self) -> Widget;
     fn render_resistance(&self) -> Widget;
@@ -26,6 +28,17 @@ trait RendererImpl {
 impl Renderer for State {
 
     fn render(&mut self, display: &mut Display) {
+        self.render_and_draw(false, display)
+    }
+
+    fn force_render(&mut self, display: &mut Display) {
+        self.render_and_draw(true, display)
+    }
+}
+
+impl RendererImpl for State {
+
+    fn render_and_draw(&mut self, forced: bool, display: &mut Display) {
         let new = match self.mode.clone() {
             Mode::Work { duration, .. } => Ui {
                 buttons: self.buttons.clone(),
@@ -69,14 +82,12 @@ impl Renderer for State {
                 bottom: Widget::BatteryFull(self.battery.full),
             },
         };
-        if new != self.ui {
-            new.render(&self.ui, display);
-            self.ui = new;
+        match forced {
+            true => new.render(&Ui::default(), display),
+            _ if new != self.ui => new.render(&self.ui, display),
+            _ => (),
         }
     }
-}
-
-impl RendererImpl for State {
 
     fn settings_header(&self, edit: EditSettings) -> Header {
         let title = match edit {
