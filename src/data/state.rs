@@ -17,14 +17,14 @@ pub struct State {
     pub config: Config,
     pub stats: Stats,
     pub battery: Battery,
+    pub buttons: Buttons,
+
+    pub ui: Ui,
 
     pub touched: Option<Time>,
-    pub buttons: Buttons,
     pub last: Option<Action>,
     pub puff_duration: Time,
     pub puff_trigger: bool, // true = counted
-
-    pub ui: Ui,
 }
 
 impl State {
@@ -35,14 +35,14 @@ impl State {
             config,
             stats,
             battery: Battery::default(),
+            buttons: Buttons::default(),
+
+            ui: Ui::default(),
 
             touched: None,
-            buttons: Buttons::default(),
             last: None,
             puff_duration: 0,
             puff_trigger: false,
-
-            ui: Ui::default(),
         }
     }
 
@@ -249,12 +249,5 @@ impl State {
         let limit = self.limit_ms();
         let max = PROGRESS_MAX as Time;
         return min(duration * max / limit, max) as Progress
-    }
-}
-
-impl Default for State {
-
-    fn default() -> Self {
-        State::with(Config::default(), Stats::default())
     }
 }

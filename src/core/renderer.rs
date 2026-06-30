@@ -84,9 +84,10 @@ impl RendererImpl for State {
         };
         match forced {
             true => new.render(&Ui::default(), display),
-            _ if new != self.ui => new.render(&self.ui, display),
-            _ => (),
+            _ if new == self.ui => return,
+            _ => new.render(&self.ui, display),
         }
+        self.ui = new;
     }
 
     fn settings_header(&self, edit: EditSettings) -> Header {
